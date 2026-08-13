@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { NODE_ENV } from "../config/env.js";
 import User from "../models/User.js";
 import Employee from "../models/Employee.js";
+import Organization from "../models/Organization.js";
 import RefreshToken from "../models/RefreshToken.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
@@ -17,21 +18,21 @@ const isProduction = NODE_ENV === "production";
 const accessTokenCookieOptions = {
   httpOnly: true,
   secure: isProduction,
-  sameSite: "strict",
+  sameSite: isProduction ? "strict" : "lax",
   maxAge: 15 * 60 * 1000 // 15 minutes
 };
 
 const refreshTokenCookieOptions = {
   httpOnly: true,
   secure: isProduction,
-  sameSite: "strict",
+  sameSite: isProduction ? "strict" : "lax",
   maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
 };
 
 const clearCookieOptions = {
   httpOnly: true,
   secure: isProduction,
-  sameSite: "strict"
+  sameSite: isProduction ? "strict" : "lax"
 };
 
 /**
@@ -84,7 +85,7 @@ export const login = asyncHandler(async (req, res) => {
         user: {
           _id: user._id,
           email: user.email,
-          name: employeeName || user.email,
+          name: employeeName || user.email.split("@")[0],
           role: user.role,
           organizationId: user.organizationId
         }
@@ -98,15 +99,10 @@ export const login = asyncHandler(async (req, res) => {
  * POST /api/auth/register
  */
 export const register = asyncHandler(async (req, res) => {
-  const { email, password, firstName, lastName, role, organizationId } = req.body;
+  const { email, password, name, fullName, firstName, lastName, organizationCode, organizationId, role } = req.body;
 
-  if (!email || !password || !role) {
-    throw new ApiError(400, "Email, password, and role are required");
-  }
-
-  const validRoles = ["super_admin", "org_admin", "asset_manager", "employee"];
-  if (!validRoles.includes(role)) {
-    throw new ApiError(400, `Invalid role. Allowed roles: ${validRoles.join(", ")}`);
+  if (!email || !password) {
+    throw new ApiError(400, "Email and password are required");
   }
 
   const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
@@ -114,29 +110,73 @@ export const register = asyncHandler(async (req, res) => {
     throw new ApiError(409, "User with this email already exists");
   }
 
+  // Parse names
+  let fName = firstName || "";
+  let lName = lastName || "";
+  const combinedName = (name || fullName || "").trim();
+  if (combinedName && !fName) {
+    const parts = combinedName.split(" ");
+    fName = parts[0] || "User";
+    lName = parts.slice(1).join(" ") || "Member";
+  }
+  if (!fName) fName = email.split("@")[0];
+  if (!lName) lName = "Member";
+
+  let targetOrgId = organizationId;
+  let targetOrgName = "";
+  let targetRole = role || "org_admin";
+
+  if (organizationCode) {
+    const matchedOrg = await Organization.findOne({
+      $or: [
+        { code: organizationCode.trim().toUpperCase() },
+        { slug: organizationCode.trim().toLowerCase() }
+      ]
+    });
+
+    if (matchedOrg) {
+      targetOrgId = matchedOrg._id;
+      targetOrgName = matchedOrg.name;
+      targetRole = role || "employee";
+    }
+  }
+
+  // If no org found or provided, auto-create a new Organization for the new admin
+  if (!targetOrgId) {
+    const orgName = `${fName}'s Organization`;
+    const orgSlug = `${fName.toLowerCase().replace(/[^a-z0-9]/g, "")}-${Date.now().toString().slice(-4)}`;
+    const newOrg = await Organization.create({
+      name: orgName,
+      code: orgSlug.toUpperCase(),
+      slug: orgSlug,
+      status: "active"
+    });
+    targetOrgId = newOrg._id;
+    targetOrgName = newOrg.name;
+    targetRole = "org_admin";
+  }
+
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash(password, salt);
 
-  let employeeRef = null;
-
-  // Create Employee record if role is employee, asset_manager, or org_admin and organizationId is provided
-  if (["employee", "asset_manager", "org_admin"].includes(role) && organizationId && firstName && lastName) {
-    const employee = await Employee.create({
-      organizationId,
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      email: email.toLowerCase().trim(),
-      status: "active"
-    });
-    employeeRef = employee._id;
-  }
+  // Create Employee profile
+  const employee = await Employee.create({
+    organizationId: targetOrgId,
+    organizationName: targetOrgName,
+    firstName: fName.trim(),
+    lastName: lName.trim(),
+    email: email.toLowerCase().trim(),
+    jobTitle: targetRole === "org_admin" ? "Organization Admin" : "Team Member",
+    status: "active"
+  });
 
   const user = await User.create({
     email: email.toLowerCase().trim(),
     passwordHash,
-    role,
-    organizationId: organizationId || null,
-    employeeRef,
+    role: targetRole,
+    organizationId: targetOrgId,
+    organizationName: targetOrgName,
+    employeeRef: employee._id,
     status: "active"
   });
 
@@ -147,13 +187,14 @@ export const register = asyncHandler(async (req, res) => {
         user: {
           _id: user._id,
           email: user.email,
+          name: `${fName} ${lName}`.trim(),
           role: user.role,
           organizationId: user.organizationId,
           employeeRef: user.employeeRef,
           status: user.status
         }
       },
-      "User registered successfully. Please login."
+      "Account created. Please sign in."
     )
   );
 });
@@ -225,6 +266,10 @@ export const getMe = asyncHandler(async (req, res) => {
     throw new ApiError(404, "User not found");
   }
 
+  const employeeName = user.employeeRef
+    ? `${user.employeeRef.firstName} ${user.employeeRef.lastName}`.trim()
+    : user.email.split("@")[0];
+
   return res.status(200).json(
     new ApiResponse(
       200,
@@ -232,6 +277,7 @@ export const getMe = asyncHandler(async (req, res) => {
         user: {
           _id: user._id,
           email: user.email,
+          name: employeeName,
           role: user.role,
           organizationId: user.organizationId,
           employee: user.employeeRef,

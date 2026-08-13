@@ -33,7 +33,11 @@ const auditLogSchema = new mongoose.Schema(
         "return_initiated",
         "retirement_requested",
         "retirement_approved",
-        "procurement_approved"
+        "procurement_approved",
+        "user_created",
+        "user_updated",
+        "user_deleted",
+        "ai_health_analyzed"
       ],
       required: true,
       index: true
@@ -50,26 +54,8 @@ const auditLogSchema = new mongoose.Schema(
       index: true
     },
     metadata: {
-      from: {
-        type: String,
-        default: null
-      },
-      to: {
-        type: String,
-        default: null
-      },
-      reason: {
-        type: String,
-        default: null
-      },
-      ticketType: {
-        type: String,
-        default: null
-      },
-      inspectionResult: {
-        type: String,
-        default: null
-      }
+      type: mongoose.Schema.Types.Mixed,
+      default: {}
     },
     createdAt: {
       type: Date,

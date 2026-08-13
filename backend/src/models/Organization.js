@@ -14,6 +14,13 @@ const organizationSchema = new mongoose.Schema(
       lowercase: true,
       trim: true
     },
+    code: {
+      type: String,
+      unique: true,
+      sparse: true,
+      uppercase: true,
+      trim: true
+    },
     status: {
       type: String,
       enum: ["active", "suspended"],

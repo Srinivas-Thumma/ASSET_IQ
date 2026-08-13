@@ -4,7 +4,7 @@ const ticketSchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      enum: ["repair", "request", "return", "support"],
+      enum: ["repair", "request", "return", "support", "admin_support"],
       required: true
     },
     status: {
@@ -15,9 +15,9 @@ const ticketSchema = new mongoose.Schema(
     },
     priority: {
       type: String,
-      enum: ["p1", "p2", "p3", "p4"],
-      default: "p3",
-      required: true
+      enum: ["p1", "p2", "p3", "p4", null],
+      default: null,
+      required: false
     },
     assetId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -55,7 +55,7 @@ const ticketSchema = new mongoose.Schema(
     },
     issueType: {
       type: String,
-      enum: ["hardware", "software", "network", "accessory", "other"],
+      enum: ["hardware", "software", "network", "accessory", "billing", "plan_upgrade", "policy", "technical", "other"],
       default: "hardware"
     },
     estimatedCost: {
@@ -106,6 +106,11 @@ const ticketSchema = new mongoose.Schema(
       ref: "Organization",
       required: true,
       index: true
+    },
+    organizationName: {
+      type: String,
+      trim: true,
+      default: ""
     }
   },
   {

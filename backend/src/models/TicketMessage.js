@@ -30,6 +30,10 @@ const ticketMessageSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    isSystemMessage: {
+      type: Boolean,
+      default: false
+    },
     organizationId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Organization",

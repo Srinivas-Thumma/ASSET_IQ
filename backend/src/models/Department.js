@@ -8,6 +8,11 @@ const departmentSchema = new mongoose.Schema(
       required: true,
       index: true
     },
+    organizationName: {
+      type: String,
+      trim: true,
+      default: ""
+    },
     name: {
       type: String,
       required: true,

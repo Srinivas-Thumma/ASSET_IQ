@@ -17,6 +17,16 @@ const locationSchema = new mongoose.Schema(
       enum: ["branch", "building", "floor", "room", "zone"],
       required: true
     },
+    level: {
+      type: Number,
+      enum: [1, 2, 3],
+      default: 1
+    },
+    address: {
+      type: String,
+      trim: true,
+      default: ""
+    },
     parentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Location",
@@ -31,6 +41,11 @@ const locationSchema = new mongoose.Schema(
       ref: "Organization",
       required: true,
       index: true
+    },
+    organizationName: {
+      type: String,
+      trim: true,
+      default: ""
     }
   },
   {

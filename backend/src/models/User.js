@@ -29,6 +29,11 @@ const userSchema = new mongoose.Schema(
       index: true,
       default: null
     },
+    organizationName: {
+      type: String,
+      trim: true,
+      default: ""
+    },
     status: {
       type: String,
       enum: ["active", "inactive"],

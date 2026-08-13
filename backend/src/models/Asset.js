@@ -12,16 +12,25 @@ const assetSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
+    imageUrl: {
+      type: String,
+      default: null
+    },
     categoryId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
-      required: true
+      default: null
     },
     organizationId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Organization",
       required: true,
       index: true
+    },
+    organizationName: {
+      type: String,
+      trim: true,
+      default: ""
     },
     status: {
       type: String,
@@ -34,6 +43,30 @@ const assetSchema = new mongoose.Schema(
     },
     purchasePrice: {
       type: Number
+    },
+    warrantyEndDate: {
+      type: Date
+    },
+    warrantyType: {
+      type: String,
+      enum: ["manufacturer", "extended", "third_party", "none"],
+      default: "manufacturer"
+    },
+    warrantyDocUrl: {
+      type: String,
+      default: null
+    },
+    warrantyAlertsSent: [
+      {
+        type: String // e.g. "30d", "15d", "1d", "expired"
+      }
+    ],
+    expectedLifespanMonths: {
+      type: Number,
+      default: 36
+    },
+    expectedRetirementDate: {
+      type: Date
     },
     vendorId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -50,19 +83,28 @@ const assetSchema = new mongoose.Schema(
     },
     ai: {
       healthScore: {
-        type: Number
+        type: Number,
+        default: 95
       },
       failureRiskPercent: {
-        type: Number
+        type: Number,
+        default: 5
       },
       remainingUsefulLifeMonths: {
-        type: Number
+        type: Number,
+        default: 34
       },
       predictedNextMaintenanceDate: {
         type: Date
       },
       lastAnalyzedAt: {
-        type: Date
+        type: Date,
+        default: Date.now
+      },
+      replacementRecommendation: {
+        type: String,
+        enum: ["keep", "repair", "replace"],
+        default: "keep"
       },
       insights: [
         {
@@ -70,6 +112,12 @@ const assetSchema = new mongoose.Schema(
         }
       ]
     },
+    healthHistory: [
+      {
+        score: { type: Number, required: true },
+        date: { type: Date, default: Date.now }
+      }
+    ],
     customValues: {
       type: Map,
       of: mongoose.Schema.Types.Mixed,

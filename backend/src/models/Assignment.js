@@ -65,6 +65,11 @@ const assignmentSchema = new mongoose.Schema(
       ref: "Organization",
       required: true,
       index: true
+    },
+    organizationName: {
+      type: String,
+      trim: true,
+      default: ""
     }
   },
   {

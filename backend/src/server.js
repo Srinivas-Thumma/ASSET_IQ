@@ -1,19 +1,26 @@
+import http from 'http';
 import app from "./app.js";
 import { connectDB } from "./config/database.js";
 import { PORT, NODE_ENV } from "./config/env.js";
 import logger from "./config/logger.js";
+import { initSocket } from "./config/socket.js";
+import { ensureSuperAdminExists } from "./services/superadmin.seeder.js";
 
 const startServer = async () => {
   try {
     await connectDB();
+    await ensureSuperAdminExists();
 
-    const server = app.listen(PORT, () => {
-      logger.info(`Server running in ${NODE_ENV} mode on port ${PORT}`);
+    const httpServer = http.createServer(app);
+    initSocket(httpServer);
+
+    httpServer.listen(PORT, () => {
+      logger.info(`AssetOwl Backend + WebSocket running in ${NODE_ENV} mode on port ${PORT}`);
     });
 
     const handleShutdown = (signal) => {
-      logger.info(`${signal} signal received: closing HTTP server`);
-      server.close(() => {
+      logger.info(`${signal} signal received: closing HTTP & WebSocket server`);
+      httpServer.close(() => {
         logger.info("HTTP server closed");
         process.exit(0);
       });

@@ -16,7 +16,8 @@ export const generateAccessToken = (userIdOrUser, emailArg, roleArg, organizatio
   let role = roleArg;
   let organizationId = organizationIdArg;
 
-  if (typeof userIdOrUser === "object" && userIdOrUser !== null) {
+  // Check if first argument is a full user object/document (has email or role property)
+  if (typeof userIdOrUser === "object" && userIdOrUser !== null && (userIdOrUser.role !== undefined || userIdOrUser.email !== undefined)) {
     userId = userIdOrUser._id || userIdOrUser.id;
     email = userIdOrUser.email;
     role = userIdOrUser.role;
@@ -25,9 +26,9 @@ export const generateAccessToken = (userIdOrUser, emailArg, roleArg, organizatio
 
   return jwt.sign(
     {
-      _id: userId.toString(),
+      _id: userId ? userId.toString() : "",
       email: email || undefined,
-      role,
+      role: role || undefined,
       organizationId: organizationId ? organizationId.toString() : null
     },
     JWT_SECRET,
