@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown } from 'lucide-react';
+import { gsap } from 'gsap';
 import { cn } from '../../utils/cn.js';
 
 export const KpiCard = ({
@@ -15,6 +16,61 @@ export const KpiCard = ({
   isPositive = true,
   alertDot = false
 }) => {
+  const numberRef = useRef(null);
+
+  // GSAP Count-Up Animation
+  useEffect(() => {
+    const el = numberRef.current;
+    if (!el || value === undefined || value === null || value === '...') {
+      return;
+    }
+
+    const strValue = String(value).trim();
+    // Parse prefix (e.g., "$", "+"), numeric value (e.g., "1,200", "95.5"), suffix (e.g., "%", "/mo")
+    const match = strValue.match(/^([^0-9.-]*)([0-9,.]+)(.*)$/);
+
+    if (!match) {
+      el.innerText = strValue;
+      return;
+    }
+
+    const prefix = match[1] || '';
+    const rawNumberStr = match[2].replace(/,/g, '');
+    const suffix = match[3] || '';
+    const targetNumber = parseFloat(rawNumberStr);
+
+    if (isNaN(targetNumber)) {
+      el.innerText = strValue;
+      return;
+    }
+
+    const hasDecimals = match[2].includes('.');
+    const decimalPlaces = hasDecimals ? match[2].split('.')[1].length : 0;
+    const hasCommas = match[2].includes(',');
+
+    const counterObj = { val: 0 };
+    const tween = gsap.to(counterObj, {
+      val: targetNumber,
+      duration: 0.8,
+      ease: 'power2.out',
+      onUpdate: () => {
+        if (!el) return;
+        let formatted = counterObj.val.toFixed(decimalPlaces);
+        if (hasCommas) {
+          const parts = formatted.split('.');
+          parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          formatted = parts.join('.');
+        }
+        el.innerText = `${prefix}${formatted}${suffix}`;
+      }
+    });
+
+    return () => {
+      tween.kill();
+      gsap.killTweensOf(counterObj);
+    };
+  }, [value]);
+
   // Generate smooth SVG points if trend array is passed
   const hasTrend = Array.isArray(trend) && trend.length > 1;
   const min = hasTrend ? Math.min(...trend) : 0;
@@ -61,7 +117,10 @@ export const KpiCard = ({
         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
           {title}
         </span>
-        <div className="text-[28px] font-extrabold text-slate-900 dark:text-white tracking-tight leading-none py-0.5">
+        <div
+          ref={numberRef}
+          className="text-[28px] font-extrabold text-slate-900 dark:text-white tracking-tight leading-none py-0.5"
+        >
           {value}
         </div>
       </div>

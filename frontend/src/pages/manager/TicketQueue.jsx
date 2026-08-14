@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { gsap } from 'gsap';
 import {
   Inbox,
   UserCheck,
@@ -88,6 +89,9 @@ export const TicketQueue = () => {
   const [isClaiming, setIsClaiming] = useState(false);
   const [showBreachHistory, setShowBreachHistory] = useState(false);
 
+  const openTbodyRef = useRef(null);
+  const claimedTbodyRef = useRef(null);
+
   // Categorize tickets
   const openTickets = useMemo(() => {
     return tickets.filter((t) => t.status === 'open');
@@ -96,6 +100,58 @@ export const TicketQueue = () => {
   const myClaimedTickets = useMemo(() => {
     return tickets.filter((t) => t.status === 'claimed' || t.status === 'in_progress');
   }, [tickets]);
+
+  // GSAP Stagger for Open Tickets Table
+  useEffect(() => {
+    if (!openTbodyRef.current) return;
+    const rows = openTbodyRef.current.querySelectorAll('tr');
+    if (!rows || rows.length === 0) return;
+
+    gsap.killTweensOf(rows);
+    gsap.fromTo(
+      rows,
+      { y: 12, opacity: 0 },
+      {
+        y: 0,
+        opacity: 1,
+        duration: 0.3,
+        stagger: 0.03,
+        ease: 'power2.out',
+        clearProps: 'all'
+      }
+    );
+
+    return () => {
+      gsap.killTweensOf(rows);
+      gsap.set(rows, { opacity: 1, y: 0, clearProps: 'all' });
+    };
+  }, [openTickets]);
+
+  // GSAP Stagger for Claimed Tickets Table
+  useEffect(() => {
+    if (!claimedTbodyRef.current) return;
+    const rows = claimedTbodyRef.current.querySelectorAll('tr');
+    if (!rows || rows.length === 0) return;
+
+    gsap.killTweensOf(rows);
+    gsap.fromTo(
+      rows,
+      { y: 12, opacity: 0 },
+      {
+        y: 0,
+        opacity: 1,
+        duration: 0.3,
+        stagger: 0.03,
+        ease: 'power2.out',
+        clearProps: 'all'
+      }
+    );
+
+    return () => {
+      gsap.killTweensOf(rows);
+      gsap.set(rows, { opacity: 1, y: 0, clearProps: 'all' });
+    };
+  }, [myClaimedTickets]);
 
   // SLA At Risk tickets (amber or red active tickets, sorted by urgency)
   const slaAtRiskTickets = useMemo(() => {
@@ -241,7 +297,7 @@ export const TicketQueue = () => {
                       <th className="px-3 py-3 text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tbody ref={openTbodyRef} className="divide-y divide-slate-100 dark:divide-slate-800">
                     {openTickets.length === 0 ? (
                       <tr>
                         <td colSpan={4} className="px-4 py-10 text-center text-xs text-slate-400">
@@ -319,7 +375,7 @@ export const TicketQueue = () => {
                       <th className="px-2 py-3 text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tbody ref={claimedTbodyRef} className="divide-y divide-slate-100 dark:divide-slate-800">
                     {myClaimedTickets.length === 0 ? (
                       <tr>
                         <td colSpan={2} className="px-4 py-10 text-center text-xs text-slate-400">

@@ -2,12 +2,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { assetApi } from '../api/asset.api.js';
 
-export const useAssets = (params = {}) => {
+export const useAssets = (params = null) => {
   const queryClient = useQueryClient();
 
+  const queryKey = params ? ['assets', params] : ['assets'];
+
   const assetsQuery = useQuery({
-    queryKey: ['assets', params],
-    queryFn: () => assetApi.getAssets(params)
+    queryKey,
+    queryFn: () => assetApi.getAssets(params || {})
   });
 
   const myAssetsQuery = useQuery({

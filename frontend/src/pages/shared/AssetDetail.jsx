@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import {
   Laptop,
   QrCode,
@@ -52,11 +54,16 @@ import ReturnAssetModal from '../../components/modals/ReturnAssetModal.jsx';
 import { formatDate, formatRelative, formatCurrency, getAssetHealthScore } from '../../utils/formatters.js';
 import { toast } from 'sonner';
 
+gsap.registerPlugin(ScrollTrigger);
+
 export const AssetDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
+
+  const sectionHealthRef = useRef(null);
+  const sectionTabsRef = useRef(null);
 
   const isManager = user?.role === 'asset_manager' || user?.role === 'org_admin' || user?.role === 'super_admin';
   const isAdmin = user?.role === 'org_admin' || user?.role === 'super_admin';
@@ -84,7 +91,8 @@ export const AssetDetail = () => {
 
   const { data: asset, isLoading } = useQuery({
     queryKey: ['asset-detail', id],
-    queryFn: () => assetApi.getById(id)
+    queryFn: () => assetApi.getById(id),
+    enabled: Boolean(id)
   });
 
   const { data: masterData } = useQuery({
@@ -219,6 +227,38 @@ export const AssetDetail = () => {
       toast.error(err.response?.data?.message || 'AI analysis failed');
     }
   });
+
+  // GSAP ScrollTrigger for below-the-fold cards
+  useEffect(() => {
+    const targets = [sectionHealthRef.current, sectionTabsRef.current].filter(Boolean);
+    if (targets.length === 0) return;
+
+    const tweens = targets.map((el) =>
+      gsap.fromTo(
+        el,
+        { y: 20, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.4,
+          ease: 'power2.out',
+          clearProps: 'all',
+          scrollTrigger: {
+            trigger: el,
+            start: 'top 85%'
+          }
+        }
+      )
+    );
+
+    return () => {
+      tweens.forEach((t) => {
+        t.kill();
+        if (t.scrollTrigger) t.scrollTrigger.kill();
+      });
+      targets.forEach((el) => gsap.set(el, { opacity: 1, y: 0, clearProps: 'all' }));
+    };
+  }, [asset]);
 
   if (isLoading) {
     return (
@@ -400,7 +440,7 @@ export const AssetDetail = () => {
       </div>
 
       {/* AI Health Widget + Live Warranty Coverage Card */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div ref={sectionHealthRef} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Rich Warranty Card */}
         <div className="p-6 rounded-[12px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm lg:col-span-1 space-y-4">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
@@ -506,7 +546,7 @@ export const AssetDetail = () => {
       {/* ─────────────────────────────────────────────────────────────
           TABBED INTERFACE: SPECIFICATIONS, HISTORY, TICKETS, AI
       ────────────────────────────────────────────────────────────── */}
-      <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-5">
+      <div ref={sectionTabsRef} className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-5">
         {/* Minimal Tab Header */}
         <div className="flex items-center gap-6 border-b border-slate-100 dark:border-slate-800 pb-3">
           {[

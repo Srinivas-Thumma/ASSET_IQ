@@ -2,7 +2,7 @@ import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar.jsx';
 import Navbar from './Navbar.jsx';
-import PageWrapper from './PageWrapper.jsx';
+import PageTransition from './PageTransition.jsx';
 
 export const RoleLayout = () => {
   const location = useLocation();
@@ -16,9 +16,9 @@ export const RoleLayout = () => {
       <main className="flex-1 h-screen overflow-y-auto overflow-x-hidden flex flex-col min-w-0">
         <Navbar />
         <div className="p-6 flex-1 min-h-0 max-w-7xl w-full mx-auto">
-          <PageWrapper pageId={location.pathname}>
+          <PageTransition pageKey={location.pathname}>
             <Outlet />
-          </PageWrapper>
+          </PageTransition>
         </div>
       </main>
     </div>

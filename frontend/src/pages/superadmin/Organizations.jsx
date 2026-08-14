@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
+import { gsap } from 'gsap';
 import {
   Building2,
   Plus,
@@ -45,6 +46,7 @@ import { toast } from 'sonner';
 export const Organizations = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const tbodyRef = useRef(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPlanTab, setSelectedPlanTab] = useState('all');
@@ -188,6 +190,32 @@ export const Organizations = () => {
       return isPlanMatch && isStatusMatch && isHealthMatch && isSearchMatch;
     });
   }, [orgs, selectedPlanTab, statusFilter, healthFilter, searchTerm]);
+
+  // GSAP Table Row Stagger Entrance
+  useEffect(() => {
+    if (!tbodyRef.current) return;
+    const rows = tbodyRef.current.querySelectorAll('tr');
+    if (!rows || rows.length === 0) return;
+
+    gsap.killTweensOf(rows);
+    gsap.fromTo(
+      rows,
+      { y: 12, opacity: 0 },
+      {
+        y: 0,
+        opacity: 1,
+        duration: 0.3,
+        stagger: 0.03,
+        ease: 'power2.out',
+        clearProps: 'all'
+      }
+    );
+
+    return () => {
+      gsap.killTweensOf(rows);
+      gsap.set(rows, { opacity: 1, y: 0, clearProps: 'all' });
+    };
+  }, [filteredOrgs]);
 
   // Select all toggler
   const handleSelectAll = () => {
@@ -530,7 +558,7 @@ export const Organizations = () => {
                   <th className="px-4 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody ref={tbodyRef} className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filteredOrgs.map((org) => {
                   const isSelected = selectedOrgIds.includes(org._id);
                   const isSuspended = org.status === 'suspended';

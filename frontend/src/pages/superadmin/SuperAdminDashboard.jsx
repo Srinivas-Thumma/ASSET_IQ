@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
 import {
   Building2,
   CreditCard,
@@ -87,68 +86,62 @@ export const SuperAdminDashboard = () => {
   const openRequestsCount = alerts.filter((a) => a.severity === 'critical' || a.severity === 'warning').length;
 
   // Plan Distribution Data
-  const planDistribution = [
-    {
-      name: 'Starter Tier',
-      key: 'starter',
-      value: organizations.filter((o) => (o.plan?.name || o.plan?.tier || 'starter').toLowerCase().includes('starter')).length || 1,
-      color: '#6D28D9'
-    },
-    {
-      name: 'Professional',
-      key: 'pro',
-      value: organizations.filter((o) => (o.plan?.name || o.plan?.tier || '').toLowerCase().includes('pro')).length || 1,
-      color: '#8B5CF6'
-    },
-    {
-      name: 'Enterprise Tier',
-      key: 'enterprise',
-      value: organizations.filter((o) => (o.plan?.name || o.plan?.tier || '').toLowerCase().includes('enterprise')).length || 0,
-      color: '#C084FC'
-    }
-  ].filter((p) => p.value > 0);
+  const planCounts = organizations.reduce((acc, org) => {
+    const planKey = (org.plan?.name || org.plan || 'starter').toLowerCase();
+    acc[planKey] = (acc[planKey] || 0) + 1;
+    return acc;
+  }, {});
 
-  // Monthly MRR History Chart Data (last 6 months)
-  const mrrData = analytics?.mrrHistory && analytics.mrrHistory.length > 0
-    ? analytics.mrrHistory
-    : [
-        { month: 'Mar', mrr: 49 },
-        { month: 'Apr', mrr: 49 },
-        { month: 'May', mrr: 98 },
-        { month: 'Jun', mrr: 98 },
-        { month: 'Jul', mrr: 98 },
-        { month: 'Aug', mrr: 147 }
-      ];
+  const planDistribution = Object.keys(planCounts).map((key) => ({
+    key,
+    name: key.charAt(0).toUpperCase() + key.slice(1),
+    value: planCounts[key],
+    color: PLAN_COLORS[key] || '#8B5CF6'
+  }));
 
-  // At-Risk Tenants
-  const atRiskTenants = organizations.filter((o) => {
-    const assetPct = o.stats?.totalAssets && o.stats?.maxAssets ? (o.stats.totalAssets / o.stats.maxAssets) * 100 : 0;
-    const isSuspended = o.status === 'suspended';
-    const lowHealth = o.avgHealth && o.avgHealth < 75;
-    return assetPct >= 80 || isSuspended || lowHealth;
+  if (planDistribution.length === 0) {
+    planDistribution.push(
+      { key: 'starter', name: 'Starter', value: 1, color: PLAN_COLORS.starter },
+      { key: 'pro', name: 'Professional', value: 1, color: PLAN_COLORS.pro }
+    );
+  }
+
+  // Monthly Recurring Revenue Trend Data (simulated telemetry trend)
+  const mrrData = [
+    { month: 'Oct', mrr: Math.max(20, totalMrr - 49) },
+    { month: 'Nov', mrr: Math.max(30, totalMrr - 30) },
+    { month: 'Dec', mrr: Math.max(49, totalMrr - 20) },
+    { month: 'Jan', mrr: Math.max(70, totalMrr - 10) },
+    { month: 'Feb', mrr: totalMrr }
+  ];
+
+  // At-Risk Tenants List (High quota usage or suspended)
+  const atRiskTenants = organizations.filter((org) => {
+    const totalAssets = org.stats?.totalAssets || 0;
+    const maxAssets = org.stats?.maxAssets || 50;
+    return (totalAssets / maxAssets >= 0.8) || org.status === 'suspended';
   });
 
-  const displayAtRisk = atRiskTenants.length > 0 ? atRiskTenants : organizations.slice(0, 2);
+  const displayAtRisk = atRiskTenants.length > 0
+    ? atRiskTenants
+    : organizations.slice(0, 3);
 
-  // Create Organization Handler
+  // Handlers
   const handleCreateOrg = async (e) => {
     e.preventDefault();
-    if (!newOrgName.trim()) {
-      toast.error('Please provide an organization name');
-      return;
-    }
-    setIsCreating(true);
+    if (!newOrgName.trim()) return;
+
     try {
+      setIsCreating(true);
       await adminApi.createOrganization({
-        name: newOrgName.trim(),
-        slug: newOrgSlug.trim() || newOrgName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+        name: newOrgName,
+        slug: newOrgSlug || newOrgName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
         plan: newOrgPlan
       });
-      toast.success('Organization created successfully');
+      toast.success(`Tenant organization "${newOrgName}" provisioned successfully`);
       setIsCreateModalOpen(false);
       setNewOrgName('');
       setNewOrgSlug('');
-      navigate('/admin/organizations');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to create organization');
     } finally {
@@ -156,23 +149,18 @@ export const SuperAdminDashboard = () => {
     }
   };
 
-  // Export CSV Handler
   const handleExportCsv = () => {
-    if (organizations.length === 0) {
-      toast.error('No organization telemetry available to export');
-      return;
-    }
-    const headers = ['ID', 'Organization Name', 'Slug', 'Plan', 'Status', 'Assets Count', 'Max Quota', 'MRR ($)'];
-    const rows = organizations.map((o) => [
-      o._id,
-      `"${o.name || ''}"`,
-      o.slug || '',
-      o.plan?.name || o.plan?.tier || 'Starter',
-      o.status || 'active',
-      o.stats?.totalAssets || 0,
-      o.stats?.maxAssets || 50,
-      o.plan?.priceMonthly || 49
+    const headers = ['Tenant Name', 'Slug', 'Plan', 'Status', 'Assets', 'Max Assets', 'Created At'];
+    const rows = organizations.map((org) => [
+      `"${org.name}"`,
+      org.slug,
+      org.plan?.name || org.plan || 'starter',
+      org.status || 'active',
+      org.stats?.totalAssets || 0,
+      org.stats?.maxAssets || 50,
+      formatDate(org.createdAt)
     ]);
+
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
@@ -184,31 +172,10 @@ export const SuperAdminDashboard = () => {
     toast.success('Platform telemetry exported to CSV');
   };
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.05
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 12 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.25, ease: 'easeOut' } }
-  };
-
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="show"
-      style={{ opacity: 0 }}
-      className="space-y-6"
-    >
+    <div className="space-y-6">
       {/* 1. Header Row */}
-      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-[28px] font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
             Platform Overview
@@ -234,10 +201,10 @@ export const SuperAdminDashboard = () => {
             Create Organization
           </Button>
         </div>
-      </motion.div>
+      </div>
 
       {/* 2. Top KPI Grid (4 Cards) */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           title="Active Tenants"
           value={isOrgsLoading ? '...' : activeTenantsCount}
@@ -261,29 +228,28 @@ export const SuperAdminDashboard = () => {
         />
 
         <KpiCard
-          title="Total Fleet Assets"
+          title="Fleet Assets"
           value={isAnalyticsLoading ? '...' : totalFleetAssets}
           delta="+8.4%"
-          deltaLabel="all tenants"
+          deltaLabel="Active tracking"
           isPositive={true}
           icon={HardDrive}
-          trend={[20, 25, 30, 38, 45]}
+          trend={[10, 15, 22, 35, 45]}
+          onClick={() => navigate('/admin/analytics')}
         />
 
         <KpiCard
-          title="Open Admin Requests"
+          title="Admin Requests"
           value={openRequestsCount}
-          delta={openRequestsCount > 0 ? `${openRequestsCount} pending` : 'All Clear'}
-          deltaLabel="platform support"
-          isPositive={openRequestsCount === 0}
+          deltaLabel="Pending triage"
           alertDot={openRequestsCount > 0}
           icon={Ticket}
           onClick={() => navigate('/admin/support')}
         />
-      </motion.div>
+      </div>
 
       {/* 3. Charts Row (2 Panels) */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Monthly Recurring Revenue Bar Chart (7 of 12 cols) */}
         <Card className="lg:col-span-7 flex flex-col justify-between" hoverLift>
           <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
@@ -396,12 +362,12 @@ export const SuperAdminDashboard = () => {
             </div>
           </div>
         </Card>
-      </motion.div>
+      </div>
 
       {/* 4. Bottom Row (2 Panels) */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left: At-Risk Tenants Watchlist (6 of 12 cols) */}
-        <Card className="lg:col-span-6 flex flex-col justify-between" hoverLift>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left: At-Risk Tenants Watchlist (6 of 12 cols) with GSAP alert pulse */}
+        <Card className="lg:col-span-6 flex flex-col justify-between" alert={atRiskTenants.length > 0} hoverLift>
           <div>
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
@@ -518,7 +484,7 @@ export const SuperAdminDashboard = () => {
             </span>
           </div>
         </Card>
-      </motion.div>
+      </div>
 
       {/* Create Organization Modal */}
       <Modal
@@ -574,7 +540,7 @@ export const SuperAdminDashboard = () => {
           />
         </form>
       </Modal>
-    </motion.div>
+    </div>
   );
 };
 

@@ -1,6 +1,14 @@
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 
-dotenv.config({ quiet: true });
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({
+  path: path.resolve(__dirname, `../../.env.${process.env.NODE_ENV || 'development'}`),
+  quiet: true
+});
 
 export const PORT = process.env.PORT || 5000;
 export const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/assetiq_v2";

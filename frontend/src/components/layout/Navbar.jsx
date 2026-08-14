@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { gsap } from 'gsap';
 import {
   Menu,
   Bell,
@@ -35,8 +36,47 @@ export const Navbar = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const notifRef = useRef(null);
   const userMenuRef = useRef(null);
+  const bellRef = useRef(null);
+  const bellRippleRef = useRef(null);
 
   const { notifications, unreadCount, markAsRead, markAllRead } = useNotifications();
+  const prevUnreadRef = useRef(unreadCount);
+
+  // GSAP Notification Bell Alert Bounce + Ripple
+  useEffect(() => {
+    if (unreadCount > 0 && unreadCount > prevUnreadRef.current) {
+      if (bellRef.current) {
+        gsap.killTweensOf(bellRef.current);
+        gsap.to(bellRef.current, {
+          keyframes: [
+            { rotation: 0 },
+            { rotation: -15 },
+            { rotation: 15 },
+            { rotation: -10 },
+            { rotation: 10 },
+            { rotation: 0 }
+          ],
+          duration: 0.5,
+          ease: 'elastic.out(1, 0.3)'
+        });
+      }
+
+      if (bellRippleRef.current) {
+        gsap.killTweensOf(bellRippleRef.current);
+        gsap.fromTo(
+          bellRippleRef.current,
+          { scale: 0.6, opacity: 0.8 },
+          { scale: 1.5, opacity: 0, duration: 0.6, ease: 'power2.out' }
+        );
+      }
+    }
+    prevUnreadRef.current = unreadCount;
+
+    return () => {
+      if (bellRef.current) gsap.killTweensOf(bellRef.current);
+      if (bellRippleRef.current) gsap.killTweensOf(bellRippleRef.current);
+    };
+  }, [unreadCount]);
 
   // Keyboard shortcut Ctrl+K / Cmd+K
   useEffect(() => {
@@ -186,7 +226,14 @@ export const Navbar = () => {
                 : 'text-slate-500 dark:text-purple-300 hover:text-purple-700 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-purple-950/50 border-transparent hover:border-purple-200 dark:hover:border-purple-800'
             }`}
           >
-            <Bell className="w-4 h-4" />
+            {/* Ripple ring for new notifications */}
+            <span
+              ref={bellRippleRef}
+              className="pointer-events-none absolute inset-0 rounded-xl border-2 border-purple-500 opacity-0"
+            />
+            <span ref={bellRef} className="inline-block origin-top">
+              <Bell className="w-4 h-4" />
+            </span>
             {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 w-4 h-4 bg-purple-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-md shadow-purple-600/40 animate-pulse">
                 {unreadCount}

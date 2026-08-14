@@ -1,6 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import {
   ShieldCheck,
   ShieldAlert,
@@ -31,10 +33,15 @@ import Skeleton from '../../components/ui/Skeleton.jsx';
 import { formatDate, formatRelative } from '../../utils/formatters.js';
 import { useToast } from '../../components/ui/ToastProvider.jsx';
 
+gsap.registerPlugin(ScrollTrigger);
+
 export const Warranties = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToast();
+
+  const tableSectionRef = useRef(null);
+  const tbodyRef = useRef(null);
 
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'active' | 'expiring_soon' | 'expired'
   const [searchQuery, setSearchQuery] = useState('');
@@ -109,6 +116,60 @@ export const Warranties = () => {
       );
     });
   }, [warranties, searchQuery]);
+
+  // GSAP Table Row Stagger Entrance
+  useEffect(() => {
+    if (!tbodyRef.current) return;
+    const rows = tbodyRef.current.querySelectorAll('tr');
+    if (!rows || rows.length === 0) return;
+
+    gsap.killTweensOf(rows);
+    gsap.fromTo(
+      rows,
+      { y: 12, opacity: 0 },
+      {
+        y: 0,
+        opacity: 1,
+        duration: 0.3,
+        stagger: 0.03,
+        ease: 'power2.out',
+        clearProps: 'all'
+      }
+    );
+
+    return () => {
+      gsap.killTweensOf(rows);
+      gsap.set(rows, { opacity: 1, y: 0, clearProps: 'all' });
+    };
+  }, [filteredWarranties]);
+
+  // GSAP ScrollTrigger for below-the-fold Table Card
+  useEffect(() => {
+    const el = tableSectionRef.current;
+    if (!el) return;
+
+    const tween = gsap.fromTo(
+      el,
+      { y: 20, opacity: 0 },
+      {
+        y: 0,
+        opacity: 1,
+        duration: 0.4,
+        ease: 'power2.out',
+        clearProps: 'all',
+        scrollTrigger: {
+          trigger: el,
+          start: 'top 85%'
+        }
+      }
+    );
+
+    return () => {
+      tween.kill();
+      if (tween.scrollTrigger) tween.scrollTrigger.kill();
+      gsap.set(el, { opacity: 1, y: 0, clearProps: 'all' });
+    };
+  }, []);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
@@ -214,22 +275,23 @@ export const Warranties = () => {
           description="All assets in this filter category have valid warranty status or no filters are active."
         />
       ) : (
-        <Card className="p-0 overflow-hidden" hoverLift={false}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
-              <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-400 text-[11px] uppercase font-bold tracking-wider border-b border-slate-100 dark:border-slate-800">
-                <tr>
-                  <th className="px-5 py-3.5">Asset Hardware</th>
-                  <th className="px-4 py-3.5">Category</th>
-                  <th className="px-4 py-3.5">Purchase Date</th>
-                  <th className="px-4 py-3.5">Warranty Expiration</th>
-                  <th className="px-4 py-3.5">Days Remaining</th>
-                  <th className="px-4 py-3.5">Lifecycle Progress</th>
-                  <th className="px-4 py-3.5">Status</th>
-                  <th className="px-5 py-3.5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+        <div ref={tableSectionRef}>
+          <Card className="p-0 overflow-hidden" hoverLift={false}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-400 text-[11px] uppercase font-bold tracking-wider border-b border-slate-100 dark:border-slate-800">
+                  <tr>
+                    <th className="px-5 py-3.5">Asset Hardware</th>
+                    <th className="px-4 py-3.5">Category</th>
+                    <th className="px-4 py-3.5">Purchase Date</th>
+                    <th className="px-4 py-3.5">Warranty Expiration</th>
+                    <th className="px-4 py-3.5">Days Remaining</th>
+                    <th className="px-4 py-3.5">Lifecycle Progress</th>
+                    <th className="px-4 py-3.5">Status</th>
+                    <th className="px-5 py-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody ref={tbodyRef} className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filteredWarranties.map((item) => {
                   const isExpired = item.status === 'expired';
                   const isExpiringSoon = item.status === 'expiring_soon';
@@ -346,7 +408,8 @@ export const Warranties = () => {
             </table>
           </div>
         </Card>
-      )}
+      </div>
+    )}
 
       {/* Renew Warranty Modal */}
       <Modal

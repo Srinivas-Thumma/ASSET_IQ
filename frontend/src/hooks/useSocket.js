@@ -18,7 +18,13 @@ export const useSocket = () => {
     }
 
     if (!globalSocket || !globalSocket.connected) {
-      globalSocket = io('http://localhost:5000', {
+      const apiBase =
+        import.meta.env.VITE_API_BASE_URL ||
+        import.meta.env.VITE_API_URL ||
+        'http://localhost:5000/api';
+      const socketServerUrl = apiBase.replace(/\/api\/?$/, '');
+
+      globalSocket = io(socketServerUrl, {
         withCredentials: true,
         transports: ['websocket', 'polling'],
         autoConnect: true,

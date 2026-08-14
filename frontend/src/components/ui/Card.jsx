@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
+import { gsap } from 'gsap';
 import { cn } from '../../utils/cn.js';
 
 export const Card = ({
@@ -11,16 +12,40 @@ export const Card = ({
   bodyClassName = '',
   hover = false,
   hoverLift = false,
+  alert = false,
   onClick,
   ...props
 }) => {
+  const cardRef = useRef(null);
   const shouldLift = hover || hoverLift;
+
+  // GSAP At-Risk / Alert Pulsing Animation
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el || !alert) return;
+
+    const tween = gsap.to(el, {
+      boxShadow: '0 0 0 3px rgba(234, 179, 8, 0.35)',
+      duration: 1,
+      repeat: -1,
+      yoyo: true,
+      ease: 'sine.inOut'
+    });
+
+    return () => {
+      tween.kill();
+      gsap.killTweensOf(el);
+      if (el) el.style.boxShadow = '';
+    };
+  }, [alert]);
 
   return (
     <div
+      ref={cardRef}
       onClick={onClick}
       className={cn(
         'bg-white dark:bg-slate-900 rounded-xl border border-slate-200/90 dark:border-slate-800 shadow-xs p-6 transition-all duration-200',
+        alert && 'border-amber-400/60 dark:border-amber-500/50',
         shouldLift && 'hover:shadow-md hover:-translate-y-0.5 hover:border-purple-200 dark:hover:border-purple-900 cursor-pointer',
         className
       )}

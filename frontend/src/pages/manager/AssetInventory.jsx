@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { gsap } from 'gsap';
 import {
   Plus,
   UserPlus,
@@ -39,6 +40,7 @@ import { useQueryClient } from '@tanstack/react-query';
 export const AssetInventory = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const tbodyRef = useRef(null);
   const { assets, isLoading, createAsset } = useAssets();
   const { categories, employees, locations, vendors } = useDashboard();
 
@@ -224,6 +226,32 @@ export const AssetInventory = () => {
     });
   }, [assets, filterTab, searchQuery]);
 
+  // GSAP Table Row Stagger Entrance
+  useEffect(() => {
+    if (!tbodyRef.current) return;
+    const rows = tbodyRef.current.querySelectorAll('tr');
+    if (!rows || rows.length === 0) return;
+
+    gsap.killTweensOf(rows);
+    gsap.fromTo(
+      rows,
+      { y: 12, opacity: 0 },
+      {
+        y: 0,
+        opacity: 1,
+        duration: 0.3,
+        stagger: 0.03,
+        ease: 'power2.out',
+        clearProps: 'all'
+      }
+    );
+
+    return () => {
+      gsap.killTweensOf(rows);
+      gsap.set(rows, { opacity: 1, y: 0, clearProps: 'all' });
+    };
+  }, [filteredAssets]);
+
   // Bulk Selection Handlers
   const handleSelectAll = (e) => {
     if (e.target.checked) {
@@ -341,7 +369,7 @@ export const AssetInventory = () => {
                   <th className="px-4 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody ref={tbodyRef} className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filteredAssets.map((asset) => {
                   const isSelected = selectedAssetIds.includes(asset._id);
                   const score = getAssetHealthScore(asset);
