@@ -1,3 +1,18 @@
+# Dependencies
+node_modules
+*/node_modules
+
+# Environment files
+*.env
+*.env.development
+*.env.production
+*.env.local
+!*.env.example
 
 # Runtime logs
 backend/*.log
+*.log
+
+# Build outputs
+frontend/dist
+dist

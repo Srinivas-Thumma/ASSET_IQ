@@ -9,6 +9,9 @@ import Department from '../models/Department.js';
 import Location from '../models/Location.js';
 import Vendor from '../models/Vendor.js';
 import Employee from '../models/Employee.js';
+import Asset from '../models/Asset.js';
+import Assignment from '../models/Assignment.js';
+import User from '../models/User.js';
 
 const router = Router();
 router.use(authenticate);
@@ -24,20 +27,25 @@ router.get('/categories', asyncHandler(async (req, res) => {
 
 router.post('/categories', requireRole(managerRoles), asyncHandler(async (req, res) => {
   const { name, expectedLifespanMonths } = req.body;
-  if (!name) throw new ApiError(400, 'Category name is required');
+  if (!name || !name.trim()) throw new ApiError(400, 'Category name is required');
   const item = await Category.create({
     organizationId: req.user.organizationId,
     organizationName: req.user.organizationName || '',
-    name,
+    name: name.trim(),
     expectedLifespanMonths: Number(expectedLifespanMonths) || 36
   });
   res.status(201).json(new ApiResponse(201, item, 'Category created'));
 }));
 
 router.put('/categories/:id', requireRole(managerRoles), asyncHandler(async (req, res) => {
+  const { name, expectedLifespanMonths } = req.body;
+  const updateData = {};
+  if (name !== undefined) updateData.name = name.trim();
+  if (expectedLifespanMonths !== undefined) updateData.expectedLifespanMonths = Number(expectedLifespanMonths) || 36;
+
   const item = await Category.findOneAndUpdate(
     { _id: req.params.id, organizationId: req.user.organizationId },
-    { $set: req.body },
+    { $set: updateData },
     { new: true }
   );
   if (!item) throw new ApiError(404, 'Category not found');
@@ -45,7 +53,8 @@ router.put('/categories/:id', requireRole(managerRoles), asyncHandler(async (req
 }));
 
 router.delete('/categories/:id', requireRole(managerRoles), asyncHandler(async (req, res) => {
-  await Category.findOneAndDelete({ _id: req.params.id, organizationId: req.user.organizationId });
+  const item = await Category.findOneAndDelete({ _id: req.params.id, organizationId: req.user.organizationId });
+  if (!item) throw new ApiError(404, 'Category not found');
   res.json(new ApiResponse(200, null, 'Category deleted'));
 }));
 
@@ -61,16 +70,21 @@ router.post('/departments', requireRole(managerRoles), asyncHandler(async (req, 
   const item = await Department.create({
     organizationId: req.user.organizationId,
     organizationName: req.user.organizationName || '',
-    name,
-    code
+    name: name.trim(),
+    code: code.trim().toUpperCase()
   });
   res.status(201).json(new ApiResponse(201, item, 'Department created'));
 }));
 
 router.put('/departments/:id', requireRole(managerRoles), asyncHandler(async (req, res) => {
+  const { name, code } = req.body;
+  const updateData = {};
+  if (name !== undefined) updateData.name = name.trim();
+  if (code !== undefined) updateData.code = code.trim().toUpperCase();
+
   const item = await Department.findOneAndUpdate(
     { _id: req.params.id, organizationId: req.user.organizationId },
-    { $set: req.body },
+    { $set: updateData },
     { new: true }
   );
   if (!item) throw new ApiError(404, 'Department not found');
@@ -78,11 +92,10 @@ router.put('/departments/:id', requireRole(managerRoles), asyncHandler(async (re
 }));
 
 router.delete('/departments/:id', requireRole(managerRoles), asyncHandler(async (req, res) => {
-  await Department.findOneAndDelete({ _id: req.params.id, organizationId: req.user.organizationId });
+  const item = await Department.findOneAndDelete({ _id: req.params.id, organizationId: req.user.organizationId });
+  if (!item) throw new ApiError(404, 'Department not found');
   res.json(new ApiResponse(200, null, 'Department deleted'));
 }));
-
-import Asset from '../models/Asset.js';
 
 // ─── LOCATIONS ────────────────────────────────────────────────────────────────
 router.get('/locations', asyncHandler(async (req, res) => {
@@ -123,9 +136,6 @@ router.get('/locations/tree', asyncHandler(async (req, res) => {
     }
   });
 
-  // Level 1: Building / Branch
-  // Level 2: Floor
-  // Level 3: Room / Zone
   const locMap = {};
   items.forEach((item) => {
     locMap[String(item._id)] = {
@@ -169,7 +179,7 @@ router.post('/locations', requireRole(managerRoles), asyncHandler(async (req, re
   if (!name || !code || !type) throw new ApiError(400, 'Location name, code, and type are required');
 
   let level = 1;
-  let computedPath = name;
+  let computedPath = name.trim();
   let validatedParentId = null;
 
   if (type === 'floor') {
@@ -180,7 +190,7 @@ router.post('/locations', requireRole(managerRoles), asyncHandler(async (req, re
       throw new ApiError(400, 'Parent of a Floor must be a Building or Branch');
     }
     validatedParentId = parent._id;
-    computedPath = `${parent.name} → ${name}`;
+    computedPath = `${parent.name} → ${name.trim()}`;
   } else if (type === 'room' || type === 'zone') {
     level = 3;
     if (!parentId) throw new ApiError(400, 'Room/Zone must have a parent Floor');
@@ -189,8 +199,8 @@ router.post('/locations', requireRole(managerRoles), asyncHandler(async (req, re
       throw new ApiError(400, 'Parent of a Room/Zone must be a Floor');
     }
     validatedParentId = parent._id;
-    const grandparent = parent.parentId ? await Location.findById(parent.parentId) : null;
-    computedPath = grandparent ? `${grandparent.name} → ${parent.name} → ${name}` : `${parent.name} → ${name}`;
+    const grandparent = parent.parentId ? await Location.findOne({ _id: parent.parentId, organizationId: req.user.organizationId }) : null;
+    computedPath = grandparent ? `${grandparent.name} → ${parent.name} → ${name.trim()}` : `${parent.name} → ${name.trim()}`;
   } else {
     // Level 1: building or branch
     level = 1;
@@ -201,7 +211,7 @@ router.post('/locations', requireRole(managerRoles), asyncHandler(async (req, re
     organizationId: req.user.organizationId,
     organizationName: req.user.organizationName || '',
     name: name.trim(),
-    code: code.trim(),
+    code: code.trim().toUpperCase(),
     type,
     level,
     address: level === 1 ? (address || '') : '',
@@ -219,7 +229,7 @@ router.put('/locations/:id', requireRole(managerRoles), asyncHandler(async (req,
 
   let level = existing.level || 1;
   let validatedParentId = existing.parentId;
-  let computedPath = name || existing.name;
+  let computedPath = name ? name.trim() : existing.name;
 
   if (type) {
     if (type === 'floor') {
@@ -231,7 +241,7 @@ router.put('/locations/:id', requireRole(managerRoles), asyncHandler(async (req,
         throw new ApiError(400, 'Parent of a Floor must be a Building or Branch');
       }
       validatedParentId = parent._id;
-      computedPath = `${parent.name} → ${name || existing.name}`;
+      computedPath = `${parent.name} → ${name ? name.trim() : existing.name}`;
     } else if (type === 'room' || type === 'zone') {
       level = 3;
       const pId = parentId || existing.parentId;
@@ -241,8 +251,8 @@ router.put('/locations/:id', requireRole(managerRoles), asyncHandler(async (req,
         throw new ApiError(400, 'Parent of a Room/Zone must be a Floor');
       }
       validatedParentId = parent._id;
-      const grandparent = parent.parentId ? await Location.findById(parent.parentId) : null;
-      computedPath = grandparent ? `${grandparent.name} → ${parent.name} → ${name || existing.name}` : `${parent.name} → ${name || existing.name}`;
+      const grandparent = parent.parentId ? await Location.findOne({ _id: parent.parentId, organizationId: req.user.organizationId }) : null;
+      computedPath = grandparent ? `${grandparent.name} → ${parent.name} → ${name ? name.trim() : existing.name}` : `${parent.name} → ${name ? name.trim() : existing.name}`;
     } else {
       level = 1;
       validatedParentId = null;
@@ -250,16 +260,16 @@ router.put('/locations/:id', requireRole(managerRoles), asyncHandler(async (req,
   }
 
   const updateFields = {
-    ...(name && { name: name.trim() }),
-    ...(code && { code: code.trim() }),
-    ...(type && { type, level }),
+    ...(name !== undefined && { name: name.trim() }),
+    ...(code !== undefined && { code: code.trim().toUpperCase() }),
+    ...(type !== undefined && { type, level }),
     parentId: validatedParentId,
     path: computedPath,
     address: level === 1 ? (address !== undefined ? address : existing.address) : ''
   };
 
-  const item = await Location.findByIdAndUpdate(
-    req.params.id,
+  const item = await Location.findOneAndUpdate(
+    { _id: req.params.id, organizationId: req.user.organizationId },
     { $set: updateFields },
     { new: true }
   );
@@ -274,7 +284,8 @@ router.delete('/locations/:id', requireRole(managerRoles), asyncHandler(async (r
     throw new ApiError(400, `Cannot delete location: ${children.length} child location(s) exist under this node. Delete or reassign children first.`);
   }
 
-  await Location.findOneAndDelete({ _id: req.params.id, organizationId: req.user.organizationId });
+  const item = await Location.findOneAndDelete({ _id: req.params.id, organizationId: req.user.organizationId });
+  if (!item) throw new ApiError(404, 'Location not found');
   res.json(new ApiResponse(200, null, 'Location deleted successfully'));
 }));
 
@@ -286,21 +297,27 @@ router.get('/vendors', asyncHandler(async (req, res) => {
 
 router.post('/vendors', requireRole(managerRoles), asyncHandler(async (req, res) => {
   const { name, contactEmail, phone } = req.body;
-  if (!name) throw new ApiError(400, 'Vendor name is required');
+  if (!name || !name.trim()) throw new ApiError(400, 'Vendor name is required');
   const item = await Vendor.create({
     organizationId: req.user.organizationId,
     organizationName: req.user.organizationName || '',
-    name,
-    contactEmail,
-    phone
+    name: name.trim(),
+    contactEmail: contactEmail ? contactEmail.trim().toLowerCase() : '',
+    phone: phone ? phone.trim() : ''
   });
   res.status(201).json(new ApiResponse(201, item, 'Vendor created'));
 }));
 
 router.put('/vendors/:id', requireRole(managerRoles), asyncHandler(async (req, res) => {
+  const { name, contactEmail, phone } = req.body;
+  const updateData = {};
+  if (name !== undefined) updateData.name = name.trim();
+  if (contactEmail !== undefined) updateData.contactEmail = contactEmail.trim().toLowerCase();
+  if (phone !== undefined) updateData.phone = phone.trim();
+
   const item = await Vendor.findOneAndUpdate(
     { _id: req.params.id, organizationId: req.user.organizationId },
-    { $set: req.body },
+    { $set: updateData },
     { new: true }
   );
   if (!item) throw new ApiError(404, 'Vendor not found');
@@ -308,7 +325,8 @@ router.put('/vendors/:id', requireRole(managerRoles), asyncHandler(async (req, r
 }));
 
 router.delete('/vendors/:id', requireRole(managerRoles), asyncHandler(async (req, res) => {
-  await Vendor.findOneAndDelete({ _id: req.params.id, organizationId: req.user.organizationId });
+  const item = await Vendor.findOneAndDelete({ _id: req.params.id, organizationId: req.user.organizationId });
+  if (!item) throw new ApiError(404, 'Vendor not found');
   res.json(new ApiResponse(200, null, 'Vendor deleted'));
 }));
 
@@ -326,19 +344,28 @@ router.post('/employees', requireRole(managerRoles), asyncHandler(async (req, re
   const item = await Employee.create({
     organizationId: req.user.organizationId,
     organizationName: req.user.organizationName || '',
-    firstName,
-    lastName,
-    email,
-    jobTitle,
+    firstName: firstName.trim(),
+    lastName: lastName.trim(),
+    email: email.trim().toLowerCase(),
+    jobTitle: (jobTitle || '').trim(),
     departmentId: departmentId || null
   });
   res.status(201).json(new ApiResponse(201, item, 'Employee created'));
 }));
 
 router.patch('/employees/:id', requireRole(managerRoles), asyncHandler(async (req, res) => {
+  const { firstName, lastName, email, jobTitle, departmentId, status } = req.body;
+  const updateData = {};
+  if (firstName !== undefined) updateData.firstName = firstName.trim();
+  if (lastName !== undefined) updateData.lastName = lastName.trim();
+  if (email !== undefined) updateData.email = email.trim().toLowerCase();
+  if (jobTitle !== undefined) updateData.jobTitle = jobTitle.trim();
+  if (departmentId !== undefined) updateData.departmentId = departmentId || null;
+  if (status !== undefined) updateData.status = status;
+
   const item = await Employee.findOneAndUpdate(
     { _id: req.params.id, organizationId: req.user.organizationId },
-    { $set: req.body },
+    { $set: updateData },
     { new: true }
   );
   if (!item) throw new ApiError(404, 'Employee not found');
@@ -346,7 +373,26 @@ router.patch('/employees/:id', requireRole(managerRoles), asyncHandler(async (re
 }));
 
 router.delete('/employees/:id', requireRole(managerRoles), asyncHandler(async (req, res) => {
-  await Employee.findOneAndDelete({ _id: req.params.id, organizationId: req.user.organizationId });
+  const activeCustodyCount = await Assignment.countDocuments({
+    employeeId: req.params.id,
+    organizationId: req.user.organizationId,
+    returnedAt: null
+  });
+
+  if (activeCustodyCount > 0) {
+    throw new ApiError(
+      400,
+      `Cannot delete employee: ${activeCustodyCount} device(s) currently in custody. Return or reassign all equipment before removing this employee.`
+    );
+  }
+
+  await User.updateMany(
+    { employeeRef: req.params.id, organizationId: req.user.organizationId },
+    { $set: { employeeRef: null } }
+  );
+
+  const item = await Employee.findOneAndDelete({ _id: req.params.id, organizationId: req.user.organizationId });
+  if (!item) throw new ApiError(404, 'Employee not found');
   res.json(new ApiResponse(200, null, 'Employee deleted'));
 }));
 

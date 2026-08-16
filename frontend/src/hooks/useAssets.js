@@ -9,12 +9,16 @@ export const useAssets = (params = null) => {
 
   const assetsQuery = useQuery({
     queryKey,
-    queryFn: () => assetApi.getAssets(params || {})
+    queryFn: () => assetApi.getAssets(params || {}),
+    staleTime: 1000 * 30, // 30s fresh cache
+    gcTime: 1000 * 60 * 5
   });
 
   const myAssetsQuery = useQuery({
     queryKey: ['assets', 'my'],
-    queryFn: () => assetApi.getMyAssets()
+    queryFn: () => assetApi.getMyAssets(),
+    staleTime: 1000 * 30,
+    gcTime: 1000 * 60 * 5
   });
 
   const createAssetMutation = useMutation({
@@ -34,7 +38,25 @@ export const useAssets = (params = null) => {
     myAssets: myAssetsQuery.data || [],
     isMyAssetsLoading: myAssetsQuery.isLoading,
     createAsset: createAssetMutation.mutateAsync,
-    isCreating: createAssetMutation.isPending
+    isCreating: createAssetMutation.isPending,
+    refetch: assetsQuery.refetch,
+    refetchMy: myAssetsQuery.refetch
+  };
+};
+
+export const useMyAssets = () => {
+  const query = useQuery({
+    queryKey: ['assets', 'my'],
+    queryFn: () => assetApi.getMyAssets(),
+    staleTime: 1000 * 30,
+    gcTime: 1000 * 60 * 5
+  });
+
+  return {
+    myAssets: query.data || [],
+    isLoading: query.isLoading,
+    isMyAssetsLoading: query.isLoading,
+    refetch: query.refetch
   };
 };
 

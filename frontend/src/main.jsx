@@ -10,7 +10,8 @@ const queryClient = new QueryClient({
     queries: {
       refetchOnWindowFocus: false,
       retry: 1,
-      staleTime: 0,
+      staleTime: 1000 * 30, // 30s cache retention before background refetch
+      gcTime: 1000 * 60 * 5, // 5m garbage collection retention
       refetchOnMount: true,
       refetchOnReconnect: true
     }

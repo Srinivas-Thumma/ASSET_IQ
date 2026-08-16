@@ -54,12 +54,20 @@ export const login = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Account is inactive. Please contact your administrator");
   }
 
+  // If user belongs to an organization, verify the organization is active
+  if (user.organizationId) {
+    const org = await Organization.findById(user.organizationId);
+    if (!org || org.status === "suspended" || org.status === "inactive") {
+      throw new ApiError(403, "Your organization is inactive or suspended. Please contact support");
+    }
+  }
+
   const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
   if (!isPasswordValid) {
     throw new ApiError(401, "Invalid email or password");
   }
 
-  const accessToken = generateAccessToken(user._id, user.email, user.role, user.organizationId);
+  const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user._id);
 
   // Store refresh token in database (7 days validity)
@@ -87,7 +95,8 @@ export const login = asyncHandler(async (req, res) => {
           email: user.email,
           name: employeeName || user.email.split("@")[0],
           role: user.role,
-          organizationId: user.organizationId
+          organizationId: user.organizationId,
+          organizationName: user.organizationName || ""
         }
       },
       "Login successful"
@@ -99,13 +108,14 @@ export const login = asyncHandler(async (req, res) => {
  * POST /api/auth/register
  */
 export const register = asyncHandler(async (req, res) => {
-  const { email, password, name, fullName, firstName, lastName, organizationCode, organizationId, role } = req.body;
+  const { email, password, name, fullName, firstName, lastName, organizationCode } = req.body;
 
   if (!email || !password) {
     throw new ApiError(400, "Email and password are required");
   }
 
-  const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
+  const normalizedEmail = email.toLowerCase().trim();
+  const existingUser = await User.findOne({ email: normalizedEmail });
   if (existingUser) {
     throw new ApiError(409, "User with this email already exists");
   }
@@ -119,12 +129,12 @@ export const register = asyncHandler(async (req, res) => {
     fName = parts[0] || "User";
     lName = parts.slice(1).join(" ") || "Member";
   }
-  if (!fName) fName = email.split("@")[0];
+  if (!fName) fName = normalizedEmail.split("@")[0];
   if (!lName) lName = "Member";
 
-  let targetOrgId = organizationId;
+  let targetOrgId = null;
   let targetOrgName = "";
-  let targetRole = role || "org_admin";
+  let targetRole = "employee";
 
   if (organizationCode) {
     const matchedOrg = await Organization.findOne({
@@ -134,15 +144,23 @@ export const register = asyncHandler(async (req, res) => {
       ]
     });
 
-    if (matchedOrg) {
-      targetOrgId = matchedOrg._id;
-      targetOrgName = matchedOrg.name;
-      targetRole = role || "employee";
+    if (!matchedOrg || matchedOrg.status !== "active") {
+      throw new ApiError(404, "Organization with the specified code was not found or is inactive");
     }
-  }
 
-  // If no org found or provided, auto-create a new Organization for the new admin
-  if (!targetOrgId) {
+    targetOrgId = matchedOrg._id;
+    targetOrgName = matchedOrg.name;
+    targetRole = "employee";
+  } else {
+    // In production, arbitrary public org creation is disallowed
+    if (isProduction) {
+      throw new ApiError(
+        403,
+        "Public organization registration is disabled in production. Organizations must be provisioned by a Super Administrator, or you must register with a valid Organization Code."
+      );
+    }
+
+    // In development mode, allow creating a test organization for rapid local prototyping
     const orgName = `${fName}'s Organization`;
     const orgSlug = `${fName.toLowerCase().replace(/[^a-z0-9]/g, "")}-${Date.now().toString().slice(-4)}`;
     const newOrg = await Organization.create({
@@ -165,13 +183,13 @@ export const register = asyncHandler(async (req, res) => {
     organizationName: targetOrgName,
     firstName: fName.trim(),
     lastName: lName.trim(),
-    email: email.toLowerCase().trim(),
+    email: normalizedEmail,
     jobTitle: targetRole === "org_admin" ? "Organization Admin" : "Team Member",
     status: "active"
   });
 
   const user = await User.create({
-    email: email.toLowerCase().trim(),
+    email: normalizedEmail,
     passwordHash,
     role: targetRole,
     organizationId: targetOrgId,
@@ -190,11 +208,12 @@ export const register = asyncHandler(async (req, res) => {
           name: `${fName} ${lName}`.trim(),
           role: user.role,
           organizationId: user.organizationId,
+          organizationName: user.organizationName,
           employeeRef: user.employeeRef,
           status: user.status
         }
       },
-      "Account created. Please sign in."
+      "Account created successfully. Please sign in."
     )
   );
 });
@@ -227,7 +246,16 @@ export const refresh = asyncHandler(async (req, res) => {
     throw new ApiError(401, "User no longer active or found");
   }
 
-  const newAccessToken = generateAccessToken(user._id, user.email, user.role, user.organizationId);
+  // If user belongs to an organization, verify the organization is active
+  if (user.organizationId) {
+    const org = await Organization.findById(user.organizationId);
+    if (!org || org.status === "suspended" || org.status === "inactive") {
+      await RefreshToken.deleteOne({ token: refreshToken });
+      throw new ApiError(403, "Your organization has been suspended or is inactive");
+    }
+  }
+
+  const newAccessToken = generateAccessToken(user);
 
   res.cookie("accessToken", newAccessToken, accessTokenCookieOptions);
 
@@ -266,6 +294,10 @@ export const getMe = asyncHandler(async (req, res) => {
     throw new ApiError(404, "User not found");
   }
 
+  if (user.status !== "active") {
+    throw new ApiError(403, "Account is inactive");
+  }
+
   const employeeName = user.employeeRef
     ? `${user.employeeRef.firstName} ${user.employeeRef.lastName}`.trim()
     : user.email.split("@")[0];
@@ -280,6 +312,7 @@ export const getMe = asyncHandler(async (req, res) => {
           name: employeeName,
           role: user.role,
           organizationId: user.organizationId,
+          organizationName: user.organizationName,
           employee: user.employeeRef,
           status: user.status
         }

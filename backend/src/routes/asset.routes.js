@@ -7,6 +7,7 @@ import {
   updateStatusSchema
 } from '../validators/asset.validator.js';
 import { returnSchema } from '../validators/assignment.validator.js';
+import { aiLimiter } from '../middleware/rateLimiter.middleware.js';
 import {
   createAsset,
   getAssets,
@@ -37,7 +38,12 @@ router.get('/warranties/stats', getWarrantyStats);
 router.get('/warranties', getWarranties);
 
 // Asset AI Health diagnosis (Ollama LLM)
-router.post('/:id/analyze', analyzeAsset);
+router.post(
+  '/:id/analyze',
+  requireRole(['asset_manager', 'org_admin', 'super_admin']),
+  aiLimiter,
+  analyzeAsset
+);
 
 // Asset history & QR
 router.get('/:id/history', getAssetHistory);

@@ -77,5 +77,9 @@ const assignmentSchema = new mongoose.Schema(
   }
 );
 
+assignmentSchema.index({ organizationId: 1, employeeId: 1, returnedAt: 1 });
+assignmentSchema.index({ organizationId: 1, assetId: 1, returnedAt: 1 });
+assignmentSchema.index({ organizationId: 1, returnInitiatedAt: 1, returnedAt: 1 });
+
 export const Assignment = mongoose.model("Assignment", assignmentSchema);
 export default Assignment;

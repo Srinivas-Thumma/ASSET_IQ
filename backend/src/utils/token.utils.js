@@ -10,11 +10,12 @@ import {
  * Generate a short-lived access token JWT (15 minutes)
  * Accepts either (userId, email, role, organizationId) or ({ _id, email, role, organizationId })
  */
-export const generateAccessToken = (userIdOrUser, emailArg, roleArg, organizationIdArg) => {
+export const generateAccessToken = (userIdOrUser, emailArg, roleArg, organizationIdArg, employeeRefArg) => {
   let userId = userIdOrUser;
   let email = emailArg;
   let role = roleArg;
   let organizationId = organizationIdArg;
+  let employeeRef = employeeRefArg;
 
   // Check if first argument is a full user object/document (has email or role property)
   if (typeof userIdOrUser === "object" && userIdOrUser !== null && (userIdOrUser.role !== undefined || userIdOrUser.email !== undefined)) {
@@ -22,6 +23,7 @@ export const generateAccessToken = (userIdOrUser, emailArg, roleArg, organizatio
     email = userIdOrUser.email;
     role = userIdOrUser.role;
     organizationId = userIdOrUser.organizationId;
+    employeeRef = userIdOrUser.employeeRef;
   }
 
   return jwt.sign(
@@ -29,7 +31,8 @@ export const generateAccessToken = (userIdOrUser, emailArg, roleArg, organizatio
       _id: userId ? userId.toString() : "",
       email: email || undefined,
       role: role || undefined,
-      organizationId: organizationId ? organizationId.toString() : null
+      organizationId: organizationId ? organizationId.toString() : null,
+      employeeRef: employeeRef ? (employeeRef._id || employeeRef).toString() : undefined
     },
     JWT_SECRET,
     {

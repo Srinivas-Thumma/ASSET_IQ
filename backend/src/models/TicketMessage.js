@@ -46,5 +46,7 @@ const ticketMessageSchema = new mongoose.Schema(
   }
 );
 
+ticketMessageSchema.index({ ticketId: 1, organizationId: 1, createdAt: 1 });
+
 export const TicketMessage = mongoose.model("TicketMessage", ticketMessageSchema);
 export default TicketMessage;

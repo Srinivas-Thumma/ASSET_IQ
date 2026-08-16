@@ -18,8 +18,12 @@ const router = Router();
 
 router.use(authenticate);
 
-// Inspection queue — all org members can view (employees see their own returns)
-router.get('/inspections', getInspectionQueue);
+// Inspection queue — restricted to asset managers and admins
+router.get(
+  '/inspections',
+  requireRole(['asset_manager', 'org_admin', 'super_admin']),
+  getInspectionQueue
+);
 
 // Create assignment
 router.post(

@@ -118,5 +118,11 @@ const ticketSchema = new mongoose.Schema(
   }
 );
 
+ticketSchema.index({ organizationId: 1, status: 1 });
+ticketSchema.index({ organizationId: 1, raisedBy: 1 });
+ticketSchema.index({ organizationId: 1, handler: 1 });
+ticketSchema.index({ organizationId: 1, createdAt: -1 });
+ticketSchema.index({ assetId: 1, organizationId: 1 });
+
 export const Ticket = mongoose.model("Ticket", ticketSchema);
 export default Ticket;

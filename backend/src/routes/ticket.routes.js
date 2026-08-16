@@ -5,7 +5,8 @@ import { validate } from '../middleware/validate.middleware.js';
 import {
   createTicketSchema,
   claimTicketSchema,
-  resolveTicketSchema
+  resolveTicketSchema,
+  updateTicketStatusSchema
 } from '../validators/ticket.validator.js';
 import {
   createTicket,
@@ -13,6 +14,7 @@ import {
   getTicketById,
   claimTicket,
   resolveTicket,
+  updateTicketStatus,
   escalateTicket
 } from '../controllers/ticket.controller.js';
 import messageRoutes from './message.routes.js';
@@ -50,8 +52,8 @@ router.patch(
 router.patch(
   '/:id/status',
   requireRole(['asset_manager', 'org_admin', 'super_admin']),
-  validate(resolveTicketSchema),
-  resolveTicket
+  validate(updateTicketStatusSchema),
+  updateTicketStatus
 );
 
 router.post(

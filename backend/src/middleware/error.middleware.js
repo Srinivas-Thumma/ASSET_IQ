@@ -23,9 +23,12 @@ export const errorHandler = (err, req, res, next) => {
     }
   }
 
+  const requestId = req.id || req.headers?.['x-request-id'] || 'unknown';
+
   logger.error(
-    `${error.statusCode || 500} - ${error.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`,
+    `[${requestId}] ${error.statusCode || 500} - ${error.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`,
     {
+      requestId,
       stack: err.stack,
       errors: error.errors
     }
@@ -35,6 +38,7 @@ export const errorHandler = (err, req, res, next) => {
     success: false,
     statusCode: error.statusCode || 500,
     message: error.message,
+    requestId,
     errors: error.errors || []
   });
 };

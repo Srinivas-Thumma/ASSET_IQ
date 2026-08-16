@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development node --watch src/server.js",
     "start": "cross-env NODE_ENV=production node src/server.js",
+    "seed:dev": "cross-env NODE_ENV=development node src/seed/development.seed.js",
+    "reset:dev": "cross-env NODE_ENV=development node src/seed/reset-dev.seed.js",
     "seed:superadmin": "node src/seed_superadmin.js"
   },
   "keywords": [],

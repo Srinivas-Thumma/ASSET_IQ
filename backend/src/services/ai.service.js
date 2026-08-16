@@ -138,24 +138,40 @@ export const gatherAssetContext = async (assetId, organizationId) => {
 };
 
 /**
+ * Sanitize text inputs for safe LLM prompt interpolation
+ */
+const sanitizePromptInput = (val, maxLen = 80) => {
+  if (!val) return 'None';
+  return String(val)
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/[{}<>"\\]/g, '')
+    .trim()
+    .slice(0, maxLen);
+};
+
+/**
  * Build the prompt for the LLM
  */
 export const buildPrompt = (context) => {
+  const safeName = sanitizePromptInput(context.name, 60);
+  const safeCategory = sanitizePromptInput(context.category, 40);
+  const safeStatus = sanitizePromptInput(context.status, 20);
+
   return `You are an expert IT asset health analyst. Analyze the following asset data and predict its health status.
 
 ASSET DATA:
-- Name: ${context.name}
-- Category: ${context.category}
+- Name: ${safeName}
+- Category: ${safeCategory}
 - Purchase Date: ${context.purchaseDate ? new Date(context.purchaseDate).toISOString().split('T')[0] : 'Unknown'}
-- Age: ${context.ageInMonths} months
-- Expected Lifespan: ${context.expectedLifespan} months
-- Purchase Price: $${context.purchasePrice}
-- Current Status: ${context.status}
-- Total Repair Tickets: ${context.repairCount}
-- Total Repair Cost: $${context.totalRepairCost}
+- Age: ${Number(context.ageInMonths) || 0} months
+- Expected Lifespan: ${Number(context.expectedLifespan) || 36} months
+- Purchase Price: $${Number(context.purchasePrice) || 0}
+- Current Status: ${safeStatus}
+- Total Repair Tickets: ${Number(context.repairCount) || 0}
+- Total Repair Cost: $${Number(context.totalRepairCost) || 0}
 - Last Repair Date: ${context.lastRepairDate ? new Date(context.lastRepairDate).toISOString().split('T')[0] : 'Never'}
-- Warranty Status: ${context.warrantyStatus}
-- Number of Previous Assignments: ${context.assignmentCount}
+- Warranty Status: ${sanitizePromptInput(context.warrantyStatus, 20)}
+- Number of Previous Assignments: ${Number(context.assignmentCount) || 0}
 
 ANALYSIS RULES:
 1. healthScore: Integer 0-100. 100 = perfect, 0 = dead. Consider age vs expected lifespan, repair frequency, warranty status.
@@ -293,8 +309,23 @@ export const parseAIResponse = (rawText, fallbackContext) => {
 /**
  * Main function to analyze asset health using Ollama with heuristic fallback
  */
-export const analyzeAssetHealth = async (assetId, organizationId, user) => {
+export const analyzeAssetHealth = async (assetId, organizationId, user, options = {}) => {
+  const { force = false, cooldownMinutes = 15 } = options;
   const { asset, context } = await gatherAssetContext(assetId, organizationId);
+
+  // Check analysis cache & cooldown
+  if (!force && asset.ai?.lastAnalyzedAt) {
+    const elapsedMinutes = (Date.now() - new Date(asset.ai.lastAnalyzedAt).getTime()) / (1000 * 60);
+    if (elapsedMinutes < cooldownMinutes) {
+      return {
+        ...(asset.ai.toObject ? asset.ai.toObject() : asset.ai),
+        source: 'cached',
+        cached: true,
+        cooldownRemainingSeconds: Math.round((cooldownMinutes - elapsedMinutes) * 60)
+      };
+    }
+  }
+
   const prompt = buildPrompt(context);
 
   let aiResult = null;

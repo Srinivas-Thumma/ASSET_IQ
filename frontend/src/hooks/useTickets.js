@@ -11,6 +11,7 @@ export const useTickets = (ticketId = null) => {
     queryKey: ['tickets'],
     queryFn: () => ticketApi.getTickets(),
     enabled: !isSpecificTicket,
+    staleTime: 5000,
     refetchInterval: 10000
   });
 
@@ -18,6 +19,7 @@ export const useTickets = (ticketId = null) => {
     queryKey: ['tickets', 'my'],
     queryFn: () => ticketApi.getMyTickets(),
     enabled: !isSpecificTicket,
+    staleTime: 5000,
     refetchInterval: 10000
   });
 
@@ -25,6 +27,7 @@ export const useTickets = (ticketId = null) => {
     queryKey: ['tickets', ticketId],
     queryFn: () => ticketApi.getTicketById(ticketId),
     enabled: isSpecificTicket,
+    staleTime: 5000,
     refetchInterval: 6000
   });
 

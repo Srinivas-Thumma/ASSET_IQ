@@ -130,6 +130,10 @@ const assetSchema = new mongoose.Schema(
 );
 
 assetSchema.index({ organizationId: 1, assetCode: 1 }, { unique: true });
+assetSchema.index({ organizationId: 1, status: 1 });
+assetSchema.index({ organizationId: 1, createdAt: -1 });
+assetSchema.index({ organizationId: 1, categoryId: 1 });
+assetSchema.index({ warrantyEndDate: 1, status: 1 });
 
 export const Asset = mongoose.model("Asset", assetSchema);
 export default Asset;

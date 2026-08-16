@@ -1,6 +1,8 @@
+import mongoose from 'mongoose';
 import Assignment from '../models/Assignment.js';
 import Asset from '../models/Asset.js';
 import User from '../models/User.js';
+import Employee from '../models/Employee.js';
 import ApiError from '../utils/ApiError.js';
 import { logAudit } from './audit.service.js';
 import { createNotification } from './notification.service.js';
@@ -12,7 +14,11 @@ export const createAssignment = async (data, user) => {
   if (asset.status !== 'stock') throw new ApiError(400, 'Asset must be in stock to assign');
 
   // Check asset not already assigned
-  const existing = await Assignment.findOne({ assetId: data.assetId, returnedAt: null });
+  const existing = await Assignment.findOne({
+    assetId: data.assetId,
+    organizationId: user.organizationId,
+    returnedAt: null
+  });
   if (existing) throw new ApiError(400, 'Asset is already assigned to another employee');
 
   const assignment = await Assignment.create({
@@ -81,7 +87,7 @@ export const inspectAssignment = async (assignmentId, data, user) => {
   await assignment.save();
 
   // Update asset status based on inspection
-  const asset = await Asset.findById(assignment.assetId);
+  const asset = await Asset.findOne({ _id: assignment.assetId, organizationId: user.organizationId });
   let targetStatus = 'stock';
   if (inspectionResult === 'fail_repair' || inspectionResult === 'fail_retire') {
     targetStatus = 'repair';
@@ -133,19 +139,51 @@ export const inspectAssignment = async (assignmentId, data, user) => {
   return { assignment, asset };
 };
 
-export const initiateReturn = async (assetId, reason, user) => {
-  // Find active assignment for this asset
-  const assignment = await Assignment.findOne({ assetId, returnedAt: null, organizationId: user.organizationId });
-  if (!assignment) throw new ApiError(404, 'No active assignment found for this asset');
+export const initiateReturn = async (targetId, reason, user) => {
+  // Support lookup by either assignment ID or asset ID
+  let assignment = null;
+  if (mongoose.Types.ObjectId.isValid(targetId)) {
+    assignment = await Assignment.findOne({
+      _id: targetId,
+      returnedAt: null,
+      organizationId: user.organizationId
+    });
+  }
+  if (!assignment && mongoose.Types.ObjectId.isValid(targetId)) {
+    assignment = await Assignment.findOne({
+      assetId: targetId,
+      returnedAt: null,
+      organizationId: user.organizationId
+    });
+  }
+  if (!assignment) throw new ApiError(404, 'No active assignment found for this equipment');
 
   // Verify employee owns this asset (if employee role)
-  if (user.role === 'employee' && assignment.employeeId.toString() !== user.employeeRef?.toString()) {
-    throw new ApiError(403, 'This asset is not assigned to you');
+  if (user.role === 'employee') {
+    let employeeId = user.employeeRef;
+    if (!employeeId && user.email) {
+      const emp = await Employee.findOne({ email: user.email, organizationId: user.organizationId });
+      if (emp) employeeId = emp._id;
+    }
+    if (!employeeId || assignment.employeeId.toString() !== employeeId.toString()) {
+      throw new ApiError(403, 'This asset is not assigned to you');
+    }
+  }
+
+  // Normalize reason into valid enum (offboarding, upgrade, defective)
+  let cleanReason = 'upgrade';
+  const reasonLower = (reason || '').toLowerCase().trim();
+  if (['offboarding', 'upgrade', 'defective'].includes(reasonLower)) {
+    cleanReason = reasonLower;
+  } else if (reasonLower.includes('offboard')) {
+    cleanReason = 'offboarding';
+  } else if (reasonLower.includes('defect') || reasonLower.includes('broken') || reasonLower.includes('damage') || reasonLower.includes('flicker') || reasonLower.includes('issue')) {
+    cleanReason = 'defective';
   }
 
   assignment.returnInitiatedAt = new Date();
   assignment.returnInitiatedBy = user._id;
-  assignment.returnReason = reason;
+  assignment.returnReason = cleanReason;
   await assignment.save();
 
   await logAudit({
@@ -154,7 +192,7 @@ export const initiateReturn = async (assetId, reason, user) => {
     action: 'return_initiated',
     targetType: 'assignment',
     targetId: assignment._id,
-    metadata: { assetId, reason },
+    metadata: { assetId: assignment.assetId, assignmentId: assignment._id, reason: cleanReason, rawReason: reason },
     organizationId: user.organizationId
   });
 

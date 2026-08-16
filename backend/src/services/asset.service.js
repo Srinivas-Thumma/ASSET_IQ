@@ -19,7 +19,7 @@ export const calculateExpectedRetirement = (purchaseDate, lifespanMonths = 36) =
 export const createAsset = async (data, user) => {
   let lifespan = data.expectedLifespanMonths;
   if (!lifespan && data.categoryId) {
-    const cat = await Category.findById(data.categoryId).lean();
+    const cat = await Category.findOne({ _id: data.categoryId, organizationId: user.organizationId }).lean();
     if (cat && cat.expectedLifespanMonths) {
       lifespan = cat.expectedLifespanMonths;
     }
@@ -65,10 +65,54 @@ export const createAsset = async (data, user) => {
 };
 
 export const getAssets = async (organizationId, filters = {}) => {
-  return await Asset.find({ organizationId, ...filters })
+  const { page, limit, search, status, categoryId, locationId, vendorId } = filters;
+  const query = { organizationId };
+
+  if (status) query.status = status;
+  if (categoryId) query.categoryId = categoryId;
+  if (locationId) query.locationId = locationId;
+  if (vendorId) query.vendorId = vendorId;
+  if (search && typeof search === 'string' && search.trim()) {
+    query.$or = [
+      { name: { $regex: search.trim(), $options: 'i' } },
+      { assetCode: { $regex: search.trim(), $options: 'i' } }
+    ];
+  }
+
+  if (page !== undefined || limit !== undefined) {
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [items, total] = await Promise.all([
+      Asset.find(query)
+        .populate('categoryId', 'name expectedLifespanMonths')
+        .populate('vendorId', 'name')
+        .populate('locationId', 'name path type')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      Asset.countDocuments(query)
+    ]);
+
+    return {
+      items,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    };
+  }
+
+  return await Asset.find(query)
     .populate('categoryId', 'name expectedLifespanMonths')
     .populate('vendorId', 'name')
-    .populate('locationId', 'name path type');
+    .populate('locationId', 'name path type')
+    .sort({ createdAt: -1 })
+    .lean();
 };
 
 export const getAssetById = async (id, organizationId) => {
@@ -82,18 +126,18 @@ export const getAssetById = async (id, organizationId) => {
   if (!asset) throw new ApiError(404, 'Asset not found');
 
   const [assignments, tickets, warranty] = await Promise.all([
-    Assignment.find({ assetId: id })
+    Assignment.find({ assetId: id, organizationId: asset.organizationId })
       .populate('employeeId', 'firstName lastName email')
       .populate('assignedBy', 'email')
       .populate('inspectedBy', 'email')
       .sort({ assignedAt: -1 })
       .lean(),
-    Ticket.find({ assetId: id })
+    Ticket.find({ assetId: id, organizationId: asset.organizationId })
       .populate('raisedBy', 'email')
       .populate('handler', 'email')
       .sort({ createdAt: -1 })
       .lean(),
-    Warranty.findOne({ assetId: id }).lean()
+    Warranty.findOne({ assetId: id, organizationId: asset.organizationId }).lean()
   ]);
 
   return {
@@ -113,7 +157,7 @@ export const getAssetHistory = async (assetId, organizationId) => {
   const asset = await Asset.findOne(query);
   if (!asset) throw new ApiError(404, 'Asset not found');
 
-  const history = await Assignment.find({ assetId })
+  const history = await Assignment.find({ assetId, organizationId: asset.organizationId })
     .populate('employeeId', 'firstName lastName email')
     .populate('assignedBy', 'email')
     .populate('inspectedBy', 'email')
@@ -368,11 +412,16 @@ export const renewWarranty = async (assetId, { newWarrantyEndDate, warrantyType 
   return asset;
 };
 
-export const computeAndStoreHealthScore = async (assetId) => {
-  const asset = await Asset.findById(assetId);
+export const computeAndStoreHealthScore = async (assetId, organizationId = null) => {
+  const query = organizationId ? { _id: assetId, organizationId } : { _id: assetId };
+  const asset = await Asset.findOne(query);
   if (!asset) return 95;
 
-  const tickets = await Ticket.find({ assetId, status: { $ne: 'closed' } }).lean();
+  const tickets = await Ticket.find({
+    assetId,
+    organizationId: asset.organizationId,
+    status: { $ne: 'closed' }
+  }).lean();
   const repairTickets = tickets.filter((t) => t.type === 'repair').length;
 
   let baseScore = 95;

@@ -35,17 +35,29 @@ export const resolveTicketSchema = z.object({
     .optional()
 });
 
+export const updateTicketStatusSchema = z.object({
+  status: z.enum(['open', 'claimed', 'in_progress', 'resolved', 'closed']).optional(),
+  resolutionNotes: z.string().optional(),
+  priority: z.enum(['p1', 'p2', 'p3', 'p4']).optional(),
+  assetStateChange: z
+    .union([
+      z.object({
+        to: z.enum(['stock', 'assigned', 'repair', 'retired'])
+      }),
+      z.enum(['stock', 'assigned', 'repair', 'retired'])
+    ])
+    .optional()
+});
+
 export const addMessageSchema = z.object({
   message: z.string().min(1, 'Message is required').trim(),
   isInternal: z.boolean().optional()
 });
 
-export const updateTicketStatusSchema = resolveTicketSchema;
-
 export default {
   createTicketSchema,
   claimTicketSchema,
   resolveTicketSchema,
-  addMessageSchema,
-  updateTicketStatusSchema
+  updateTicketStatusSchema,
+  addMessageSchema
 };

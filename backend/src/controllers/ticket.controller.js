@@ -9,8 +9,17 @@ export const createTicket = asyncHandler(async (req, res) => {
 });
 
 export const getTickets = asyncHandler(async (req, res) => {
-  const tickets = await ticketService.getTickets(req.user.organizationId, req.user);
-  res.status(200).json(new ApiResponse(200, tickets, 'Tickets retrieved successfully'));
+  const result = await ticketService.getTickets(req.user.organizationId, req.user, req.query);
+  if (result && result.pagination) {
+    return res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: 'Tickets retrieved successfully',
+      data: result.items,
+      pagination: result.pagination
+    });
+  }
+  res.status(200).json(new ApiResponse(200, result, 'Tickets retrieved successfully'));
 });
 
 export const getTicketById = asyncHandler(async (req, res) => {
@@ -40,6 +49,15 @@ export const resolveTicket = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, ticket, 'Ticket resolved successfully'));
 });
 
+export const updateTicketStatus = asyncHandler(async (req, res) => {
+  const ticket = await ticketService.updateTicketStatus(
+    req.params.id,
+    req.body,
+    req.user
+  );
+  res.status(200).json(new ApiResponse(200, ticket, 'Ticket status updated successfully'));
+});
+
 export const escalateTicket = asyncHandler(async (req, res) => {
   const ticket = await ticketService.escalateTicket(req.params.id, req.user);
   res.status(200).json(new ApiResponse(200, ticket, 'Ticket escalated successfully'));
@@ -51,5 +69,6 @@ export default {
   getTicketById,
   claimTicket,
   resolveTicket,
+  updateTicketStatus,
   escalateTicket
 };

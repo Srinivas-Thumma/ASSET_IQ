@@ -10,8 +10,17 @@ export const createAsset = asyncHandler(async (req, res) => {
 });
 
 export const getAssets = asyncHandler(async (req, res) => {
-  const assets = await assetService.getAssets(req.user.organizationId, req.query);
-  res.status(200).json(new ApiResponse(200, assets, 'Assets retrieved successfully'));
+  const result = await assetService.getAssets(req.user.organizationId, req.query);
+  if (result && result.pagination) {
+    return res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: 'Assets retrieved successfully',
+      data: result.items,
+      pagination: result.pagination
+    });
+  }
+  res.status(200).json(new ApiResponse(200, result, 'Assets retrieved successfully'));
 });
 
 export const getAssetById = asyncHandler(async (req, res) => {
@@ -65,7 +74,13 @@ export const getMyAssets = asyncHandler(async (req, res) => {
 });
 
 export const analyzeAsset = asyncHandler(async (req, res) => {
-  const result = await aiService.analyzeAssetHealth(req.params.id, req.user.organizationId, req.user);
+  const force = req.query?.force === 'true' || req.body?.force === true;
+  const result = await aiService.analyzeAssetHealth(
+    req.params.id,
+    req.user.organizationId,
+    req.user,
+    { force }
+  );
   res.status(200).json(new ApiResponse(200, result, 'AI health diagnosis completed'));
 });
 

@@ -78,5 +78,7 @@ auditLogSchema.pre(["deleteOne", "deleteMany", "findOneAndDelete"], function () 
   throw new Error("AuditLog is append-only: deletions are prohibited");
 });
 
+auditLogSchema.index({ organizationId: 1, createdAt: -1 });
+
 export const AuditLog = mongoose.model("AuditLog", auditLogSchema);
 export default AuditLog;

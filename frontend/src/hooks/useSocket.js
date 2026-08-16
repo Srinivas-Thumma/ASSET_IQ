@@ -39,6 +39,12 @@ export const useSocket = () => {
 
       globalSocket.on('connect_error', (err) => {
         console.warn('[Socket.IO] Connection warning:', err.message);
+        if (err.message && err.message.toLowerCase().includes('authentication error')) {
+          // Prevent rapid reconnect attempts if session is unauthorized
+          if (globalSocket) {
+            globalSocket.disconnect();
+          }
+        }
       });
 
       globalSocket.on('disconnect', (reason) => {

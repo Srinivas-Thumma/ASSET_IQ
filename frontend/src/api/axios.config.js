@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useAuthStore } from '../stores/auth.store.js';
 
 const baseURL =
   import.meta.env.VITE_API_BASE_URL ||
@@ -8,7 +9,8 @@ const baseURL =
 const api = axios.create({
   baseURL,
   withCredentials: true,
-  headers: { 'Content-Type': 'application/json' }
+  headers: { 'Content-Type': 'application/json' },
+  timeout: 30000 // 30s timeout so network failures never freeze spinners indefinitely
 });
 
 let isRefreshing = false;
@@ -63,6 +65,8 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError);
+        // Session expired or revoked: reset user auth state cleanly
+        useAuthStore.getState().clearUser();
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

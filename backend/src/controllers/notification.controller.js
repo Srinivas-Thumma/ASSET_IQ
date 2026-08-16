@@ -18,7 +18,11 @@ export const markAllAsRead = asyncHandler(async (req, res) => {
 });
 
 export const runWarrantyNotificationCheck = asyncHandler(async (req, res) => {
-  const result = await notificationService.runWarrantyNotificationCheck();
+  const targetOrgId = req.user.role === 'super_admin'
+    ? (req.query?.organizationId || null)
+    : req.user.organizationId;
+
+  const result = await notificationService.runWarrantyNotificationCheck(targetOrgId);
   res.status(200).json(new ApiResponse(200, result, 'Warranty notification check completed'));
 });
 

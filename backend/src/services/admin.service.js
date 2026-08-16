@@ -5,6 +5,15 @@ import User from '../models/User.js';
 import Employee from '../models/Employee.js';
 import Ticket from '../models/Ticket.js';
 import AuditLog from '../models/AuditLog.js';
+import RefreshToken from '../models/RefreshToken.js';
+import Assignment from '../models/Assignment.js';
+import Warranty from '../models/Warranty.js';
+import TicketMessage from '../models/TicketMessage.js';
+import Notification from '../models/Notification.js';
+import Category from '../models/Category.js';
+import Department from '../models/Department.js';
+import Location from '../models/Location.js';
+import Vendor from '../models/Vendor.js';
 import ApiError from '../utils/ApiError.js';
 
 export const getOrganizations = async () => {
@@ -246,15 +255,29 @@ export const deleteOrganization = async (orgId) => {
   const org = await Organization.findById(orgId);
   if (!org) throw new ApiError(404, 'Organization not found');
 
-  // Cascade remove assets, employees, tickets for this organization
+  // Fetch all user IDs in this organization to purge indirect relations (e.g. RefreshToken)
+  const users = await User.find({ organizationId: orgId }).select('_id').lean();
+  const userIds = users.map((u) => u._id);
+
+  // Cascade remove all tenant records across all models
   await Promise.all([
     Organization.findByIdAndDelete(orgId),
-    Asset.deleteMany({ organizationId: orgId }),
+    User.deleteMany({ organizationId: orgId }),
+    RefreshToken.deleteMany({ userId: { $in: userIds } }),
     Employee.deleteMany({ organizationId: orgId }),
-    Ticket.deleteMany({ organizationId: orgId })
+    Asset.deleteMany({ organizationId: orgId }),
+    Assignment.deleteMany({ organizationId: orgId }),
+    Warranty.deleteMany({ organizationId: orgId }),
+    Ticket.deleteMany({ organizationId: orgId }),
+    TicketMessage.deleteMany({ organizationId: orgId }),
+    Notification.deleteMany({ organizationId: orgId }),
+    Category.deleteMany({ organizationId: orgId }),
+    Department.deleteMany({ organizationId: orgId }),
+    Location.deleteMany({ organizationId: orgId }),
+    Vendor.deleteMany({ organizationId: orgId })
   ]);
 
-  return { success: true, message: `Organization ${org.name} deleted` };
+  return { success: true, message: `Organization ${org.name} and all related records deleted` };
 };
 
 export const bulkUpdateOrganizationStatus = async (orgIds, status) => {
@@ -268,11 +291,24 @@ export const bulkUpdateOrganizationPlan = async (orgIds, planId) => {
 };
 
 export const bulkDeleteOrganizations = async (orgIds) => {
+  const users = await User.find({ organizationId: { $in: orgIds } }).select('_id').lean();
+  const userIds = users.map((u) => u._id);
+
   await Promise.all([
     Organization.deleteMany({ _id: { $in: orgIds } }),
-    Asset.deleteMany({ organizationId: { $in: orgIds } }),
+    User.deleteMany({ organizationId: { $in: orgIds } }),
+    RefreshToken.deleteMany({ userId: { $in: userIds } }),
     Employee.deleteMany({ organizationId: { $in: orgIds } }),
-    Ticket.deleteMany({ organizationId: { $in: orgIds } })
+    Asset.deleteMany({ organizationId: { $in: orgIds } }),
+    Assignment.deleteMany({ organizationId: { $in: orgIds } }),
+    Warranty.deleteMany({ organizationId: { $in: orgIds } }),
+    Ticket.deleteMany({ organizationId: { $in: orgIds } }),
+    TicketMessage.deleteMany({ organizationId: { $in: orgIds } }),
+    Notification.deleteMany({ organizationId: { $in: orgIds } }),
+    Category.deleteMany({ organizationId: { $in: orgIds } }),
+    Department.deleteMany({ organizationId: { $in: orgIds } }),
+    Location.deleteMany({ organizationId: { $in: orgIds } }),
+    Vendor.deleteMany({ organizationId: { $in: orgIds } })
   ]);
   return { success: true, deletedCount: orgIds.length };
 };
