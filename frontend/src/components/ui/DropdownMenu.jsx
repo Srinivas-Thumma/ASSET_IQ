@@ -18,11 +18,17 @@ export const DropdownMenu = ({
   const updatePosition = () => {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
+
+    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+      setIsOpen(false);
+      return;
+    }
+
     const approxHeight = items.length > 0 ? items.length * 38 + 16 : 180;
     const spaceBelow = window.innerHeight - rect.bottom;
     const placeUpward = spaceBelow < approxHeight && rect.top > approxHeight;
 
-    let top = placeUpward ? rect.top - approxHeight - 4 : rect.bottom + 6;
+    let top = placeUpward ? Math.max(8, rect.top - approxHeight - 4) : rect.bottom + 6;
     let left = align === 'right' ? rect.right - menuWidth : rect.left;
 
     // Boundary guards
@@ -64,20 +70,27 @@ export const DropdownMenu = ({
       if (e.key === 'Escape') setIsOpen(false);
     };
 
-    const handleScrollOrResize = () => {
-      setIsOpen(false);
+    const handleScroll = (e) => {
+      if (menuRef.current && (menuRef.current === e.target || menuRef.current.contains(e.target))) {
+        return;
+      }
+      updatePosition();
+    };
+
+    const handleResize = () => {
+      updatePosition();
     };
 
     document.addEventListener('mousedown', handleOutsideClick, true);
     document.addEventListener('keydown', handleKeydown);
-    window.addEventListener('scroll', handleScrollOrResize, true);
-    window.addEventListener('resize', handleScrollOrResize);
+    window.addEventListener('scroll', handleScroll, true);
+    window.addEventListener('resize', handleResize);
 
     return () => {
       document.removeEventListener('mousedown', handleOutsideClick, true);
       document.removeEventListener('keydown', handleKeydown);
-      window.removeEventListener('scroll', handleScrollOrResize, true);
-      window.removeEventListener('resize', handleScrollOrResize);
+      window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('resize', handleResize);
     };
   }, [isOpen]);
 

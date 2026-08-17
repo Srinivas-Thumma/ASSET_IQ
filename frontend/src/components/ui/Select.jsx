@@ -54,12 +54,19 @@ export const Select = ({
   const updatePosition = useCallback(() => {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
+
+    // If trigger has scrolled off-screen, close popover
+    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+      setIsOpen(false);
+      return;
+    }
+
     const approxHeight = Math.min(240, (parsedOptions.length + 1) * 36 + 12);
     const spaceBelow = window.innerHeight - rect.bottom;
     const placeUpward = spaceBelow < approxHeight && rect.top > approxHeight;
 
-    const top = placeUpward ? rect.top - approxHeight - 4 : rect.bottom + 4;
-    const left = rect.left;
+    const top = placeUpward ? Math.max(8, rect.top - approxHeight - 4) : rect.bottom + 4;
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - rect.width - 8));
     const width = rect.width;
 
     setPosition({ top, left, width, placeUpward });
@@ -75,7 +82,7 @@ export const Select = ({
     }
   };
 
-  // Close when clicking outside or scrolling/resizing
+  // Close when clicking outside, or update position on container scroll/resize
   useEffect(() => {
     if (!isOpen) return;
 
@@ -96,20 +103,28 @@ export const Select = ({
       if (e.key === 'Escape') setIsOpen(false);
     };
 
-    const handleScrollOrResize = () => {
-      setIsOpen(false);
+    const handleScroll = (event) => {
+      // If scrolling inside the dropdown popover itself, do not close or reposition!
+      if (popoverRef.current && (popoverRef.current === event.target || popoverRef.current.contains(event.target))) {
+        return;
+      }
+      updatePosition();
+    };
+
+    const handleResize = () => {
+      updatePosition();
     };
 
     document.addEventListener('mousedown', handleClickOutside, true);
     document.addEventListener('keydown', handleKeydown);
-    window.addEventListener('scroll', handleScrollOrResize, true);
-    window.addEventListener('resize', handleScrollOrResize);
+    window.addEventListener('scroll', handleScroll, true);
+    window.addEventListener('resize', handleResize);
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside, true);
       document.removeEventListener('keydown', handleKeydown);
-      window.removeEventListener('scroll', handleScrollOrResize, true);
-      window.removeEventListener('resize', handleScrollOrResize);
+      window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('resize', handleResize);
     };
   }, [isOpen, updatePosition]);
 
