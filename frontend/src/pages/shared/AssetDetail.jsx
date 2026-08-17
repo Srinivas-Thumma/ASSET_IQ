@@ -217,11 +217,13 @@ export const AssetDetail = () => {
   });
 
   const analyzeMutation = useMutation({
-    mutationFn: () => assetApi.analyzeAssetHealth(id),
-    onSuccess: () => {
+    mutationFn: () => assetApi.analyzeAssetHealth(id, true),
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['asset-detail', id] });
       queryClient.invalidateQueries({ queryKey: ['assets'] });
-      toast.success('AI Health analysis completed via Ollama');
+      const score = data?.healthScore;
+      const rec = data?.replacementRecommendation;
+      toast.success(`AI Health analysis completed: ${score !== undefined ? `${score}%` : ''} (${rec || 'Updated'})`);
     },
     onError: (err) => {
       toast.error(err.response?.data?.message || 'AI analysis failed');

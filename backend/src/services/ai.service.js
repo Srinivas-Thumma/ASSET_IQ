@@ -83,16 +83,17 @@ export const gatherAssetContext = async (assetId, organizationId) => {
 
   if (!asset) throw new ApiError(404, 'Asset not found');
 
-  // Repair history
-  const repairs = await Ticket.find({
+  // Query all tickets related to this asset
+  const tickets = await Ticket.find({
     assetId,
-    organizationId,
-    type: 'repair',
-    status: { $in: ['resolved', 'closed'] }
+    organizationId
   }).sort({ createdAt: -1 });
 
-  const totalRepairCost = repairs.reduce((sum, r) => sum + (r.estimatedCost || 0), 0);
-  const lastRepair = repairs[0];
+  const repairTickets = tickets.filter((t) => t.type === 'repair' || t.issueType === 'hardware');
+  const openRepairTickets = repairTickets.filter((t) => ['open', 'claimed', 'in_progress'].includes(t.status));
+  const resolvedRepairs = repairTickets.filter((t) => ['resolved', 'closed'].includes(t.status));
+  const totalRepairCost = repairTickets.reduce((sum, r) => sum + (r.estimatedCost || 0), 0);
+  const lastRepair = resolvedRepairs[0] || repairTickets[0];
 
   // Assignment history
   const assignments = await Assignment.find({ assetId, organizationId })
@@ -104,7 +105,7 @@ export const gatherAssetContext = async (assetId, organizationId) => {
 
   // Age calculation
   const ageInMonths = asset.purchaseDate 
-    ? Math.max(0, Math.floor((Date.now() - new Date(asset.purchaseDate).getTime()) / (1000 * 60 * 60 * 24 * 30)))
+    ? Math.max(0, Math.floor((Date.now() - new Date(asset.purchaseDate).getTime()) / (1000 * 60 * 60 * 24 * 30.4375)))
     : 0;
 
   const expectedLifespan = asset.categoryId?.expectedLifespanMonths || 36;
@@ -113,13 +114,14 @@ export const gatherAssetContext = async (assetId, organizationId) => {
     asset,
     ageInMonths,
     expectedLifespan,
-    repairCount: repairs.length,
+    repairCount: repairTickets.length,
+    openRepairCount: openRepairTickets.length,
     totalRepairCost,
-    lastRepairDate: lastRepair?.resolvedAt || null,
+    lastRepairDate: lastRepair?.resolvedAt || lastRepair?.createdAt || null,
     assignmentCount: assignments.length,
     warrantyStatus: warranty ? (new Date(warranty.endDate) > Date.now() ? 'active' : 'expired') : 'none',
     warrantyEndDate: warranty?.endDate || null,
-    currentAssignment: assignments.find(a => !a.returnedAt) || null,
+    currentAssignment: assignments.find((a) => !a.returnedAt) || null,
     context: {
       name: asset.name,
       category: asset.categoryId?.name || 'General Hardware',
@@ -128,9 +130,11 @@ export const gatherAssetContext = async (assetId, organizationId) => {
       expectedLifespan,
       purchasePrice: asset.purchasePrice || 0,
       status: asset.status,
-      repairCount: repairs.length,
+      repairCount: repairTickets.length,
+      openRepairCount: openRepairTickets.length,
+      totalTicketsCount: tickets.length,
       totalRepairCost,
-      lastRepairDate: lastRepair?.resolvedAt || null,
+      lastRepairDate: lastRepair?.resolvedAt || lastRepair?.createdAt || null,
       warrantyStatus: warranty ? (new Date(warranty.endDate) > Date.now() ? 'active' : 'expired') : 'none',
       assignmentCount: assignments.length,
     }
@@ -156,47 +160,37 @@ export const buildPrompt = (context) => {
   const safeName = sanitizePromptInput(context.name, 60);
   const safeCategory = sanitizePromptInput(context.category, 40);
   const safeStatus = sanitizePromptInput(context.status, 20);
+  const baseline = calculateHeuristicHealth(context);
 
-  return `You are an expert IT asset health analyst. Analyze the following asset data and predict its health status.
+  return `You are an expert IT asset health analysis AI. Analyze the following physical IT hardware data and output a realistic JSON health evaluation.
 
-ASSET DATA:
+EQUIPMENT DATA:
 - Name: ${safeName}
 - Category: ${safeCategory}
 - Purchase Date: ${context.purchaseDate ? new Date(context.purchaseDate).toISOString().split('T')[0] : 'Unknown'}
-- Age: ${Number(context.ageInMonths) || 0} months
-- Expected Lifespan: ${Number(context.expectedLifespan) || 36} months
-- Purchase Price: $${Number(context.purchasePrice) || 0}
-- Current Status: ${safeStatus}
-- Total Repair Tickets: ${Number(context.repairCount) || 0}
+- Operational Age: ${Number(context.ageInMonths) || 0} months
+- Manufacturer Lifespan: ${Number(context.expectedLifespan) || 36} months
+- Fleet Status: ${safeStatus}
+- Past Repair Tickets: ${Number(context.repairCount) || 0}
+- Active Defect Issues: ${Number(context.openRepairCount) || 0}
 - Total Repair Cost: $${Number(context.totalRepairCost) || 0}
-- Last Repair Date: ${context.lastRepairDate ? new Date(context.lastRepairDate).toISOString().split('T')[0] : 'Never'}
-- Warranty Status: ${sanitizePromptInput(context.warrantyStatus, 20)}
-- Number of Previous Assignments: ${Number(context.assignmentCount) || 0}
+- Baseline Telemetry Estimate: ${baseline.healthScore}% (${baseline.replacementRecommendation})
+- Warranty: ${sanitizePromptInput(context.warrantyStatus, 20)}
 
-ANALYSIS RULES:
-1. healthScore: Integer 0-100. 100 = perfect, 0 = dead. Consider age vs expected lifespan, repair frequency, warranty status.
-2. failureRiskPercent: Integer 0-100. Probability of failure in next 6 months.
-3. remainingUsefulLifeMonths: Integer. Estimated months before replacement is needed.
-4. predictedNextMaintenanceDate: ISO date string (YYYY-MM-DD). When is the next issue likely?
-5. insights: Array of 2-5 concise strings. Each insight should be actionable and specific.
-6. replacementRecommendation: One of "keep", "repair", or "replace".
+SCORING INSTRUCTIONS:
+- Pristine equipment (0-6 months, 0 tickets, in stock/assigned): Output healthScore 85-100, recommendation "keep".
+- Normal operating equipment (50-80% lifespan): Output healthScore 50-75, recommendation "keep" or "repair".
+- Broken / In repair status / Active defect issues: Output healthScore 15-45, recommendation "repair" or "replace".
+- Overdue past lifespan / Retired: Output healthScore 5-35, recommendation "replace".
 
-SCORING GUIDELINES:
-- New assets (< 6 months, 0 repairs, warranty active): 90-100
-- Good condition (age < 50% of lifespan, 0-1 repairs): 70-89
-- Fair condition (age 50-75% of lifespan, 2-3 repairs): 50-69
-- Poor condition (age > 75% of lifespan, 3+ repairs, warranty expired): 30-49
-- Critical (age > 100% of lifespan, frequent repairs, high cost): 0-29
-
-RESPOND WITH ONLY VALID JSON. NO MARKDOWN. NO EXPLANATION. ONLY JSON:
-
+Return ONLY a valid JSON object matching this schema:
 {
-  "healthScore": 95,
-  "failureRiskPercent": 5,
-  "remainingUsefulLifeMonths": 30,
-  "predictedNextMaintenanceDate": "2025-06-15",
-  "insights": ["Asset in optimal operating condition", "Warranty covers upcoming cycles"],
-  "replacementRecommendation": "keep"
+  "healthScore": ${baseline.healthScore},
+  "failureRiskPercent": ${baseline.failureRiskPercent},
+  "remainingUsefulLifeMonths": ${baseline.remainingUsefulLifeMonths},
+  "predictedNextMaintenanceDate": "${baseline.predictedNextMaintenanceDate}",
+  "insights": ["Specific diagnostic insight based on actual age and condition", "Specific maintenance advice"],
+  "replacementRecommendation": "${baseline.replacementRecommendation}"
 }`;
 };
 
@@ -204,14 +198,15 @@ RESPOND WITH ONLY VALID JSON. NO MARKDOWN. NO EXPLANATION. ONLY JSON:
  * Heuristic fallback calculation if Ollama is not running or unreachable
  */
 export const calculateHeuristicHealth = (context) => {
-  const { ageInMonths, expectedLifespan, repairCount, warrantyStatus, status } = context;
+  const { ageInMonths = 0, expectedLifespan = 36, repairCount = 0, openRepairCount = 0, warrantyStatus = 'none', status = 'stock' } = context;
 
   // Base score calculation based on age vs lifespan
-  const ageRatio = expectedLifespan > 0 ? Math.min(1.5, ageInMonths / expectedLifespan) : 0.2;
-  let healthScore = Math.round(100 - (ageRatio * 60));
+  const ageRatio = expectedLifespan > 0 ? ageInMonths / expectedLifespan : 0.1;
+  let healthScore = Math.round(100 - (Math.min(1.5, ageRatio) * 55));
 
-  // Deductions for repairs
-  healthScore -= (repairCount * 12);
+  // Deductions for past and active repairs
+  healthScore -= (repairCount * 8);
+  healthScore -= (openRepairCount * 18);
 
   // Warranty penalty
   if (warrantyStatus === 'expired') {
@@ -220,48 +215,49 @@ export const calculateHeuristicHealth = (context) => {
 
   // Status penalty
   if (status === 'repair') {
-    healthScore -= 25;
+    healthScore = Math.min(healthScore, 42);
+    healthScore -= 12;
   } else if (status === 'retired') {
-    healthScore = 0;
+    healthScore = 5;
   }
 
-  // Clamp 0 - 100
+  // Clamp 5 - 100
   healthScore = Math.max(5, Math.min(100, healthScore));
 
-  const failureRiskPercent = Math.max(0, Math.min(95, 100 - healthScore + (repairCount * 5)));
+  const failureRiskPercent = Math.max(0, Math.min(95, 100 - healthScore + (repairCount * 6) + (openRepairCount * 12)));
   const remainingUsefulLifeMonths = Math.max(0, Math.round(Math.max(0, expectedLifespan - ageInMonths) * (healthScore / 100)));
 
-  const nextMaintMonths = Math.max(1, Math.round((healthScore / 100) * 12));
+  const nextMaintMonths = Math.max(1, Math.round((healthScore / 100) * 10));
   const nextDate = new Date();
   nextDate.setMonth(nextDate.getMonth() + nextMaintMonths);
   const predictedNextMaintenanceDate = nextDate.toISOString().split('T')[0];
 
   let replacementRecommendation = 'keep';
-  if (healthScore < 40 || ageInMonths > expectedLifespan) {
+  if (healthScore < 45 || ageInMonths > expectedLifespan || status === 'retired') {
     replacementRecommendation = 'replace';
-  } else if (healthScore < 70 || status === 'repair' || repairCount >= 2) {
+  } else if (healthScore < 70 || status === 'repair' || repairCount >= 2 || openRepairCount > 0) {
     replacementRecommendation = 'repair';
   }
 
   const insights = [];
-  if (ageInMonths < 6 && repairCount === 0) {
-    insights.push('Device in pristine early-lifecycle operating phase');
+  if (status === 'retired') {
+    insights.push('Device has been decommissioned from active production fleet');
+    insights.push('Hardware has reached end-of-life; replace or salvage components');
+  } else if (status === 'repair' || openRepairCount > 0) {
+    insights.push('Hardware is currently flagged with active defect tickets');
+    insights.push('Requires physical inspection or part replacement before redeployment');
   } else if (ageInMonths > expectedLifespan) {
-    insights.push(`Exceeded manufacturer planned lifespan of ${expectedLifespan} months`);
+    insights.push(`Exceeded manufacturer planned lifespan of ${expectedLifespan} months (Current age: ${ageInMonths}m)`);
+    insights.push('Elevated component fatigue risk; schedule procurement replacement');
+  } else if (ageRatio >= 0.7) {
+    insights.push(`Operating in late-lifecycle phase (${Math.round(ageRatio * 100)}% of lifespan consumed)`);
+    insights.push(warrantyStatus === 'active' ? 'Protected by active OEM warranty' : 'Out of warranty coverage');
+  } else if (ageInMonths < 6 && repairCount === 0) {
+    insights.push('Device in pristine early-lifecycle operating phase');
+    insights.push('Zero past failure events recorded');
   } else {
-    insights.push(`Operating at ${Math.round((ageInMonths / (expectedLifespan || 1)) * 100)}% of useful lifecycle`);
-  }
-
-  if (repairCount > 0) {
-    insights.push(`Logged ${repairCount} past maintenance ticket(s) - monitored for thermal or wear degradation`);
-  } else {
-    insights.push('Clean service history with zero hardware repair incidents');
-  }
-
-  if (warrantyStatus === 'active') {
-    insights.push('Active OEM warranty coverage protects against unexpected failures');
-  } else if (warrantyStatus === 'expired') {
-    insights.push('OEM warranty coverage expired; prioritize proactive maintenance');
+    insights.push(`Operating at ${Math.round(ageRatio * 100)}% of useful lifecycle`);
+    insights.push(repairCount > 0 ? `Logged ${repairCount} past maintenance ticket(s)` : 'Clean service history');
   }
 
   return {
@@ -279,25 +275,65 @@ export const calculateHeuristicHealth = (context) => {
  */
 export const parseAIResponse = (rawText, fallbackContext) => {
   try {
-    // Try to extract JSON from markdown code blocks if present
     const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)```/);
     const cleanText = jsonMatch ? jsonMatch[1].trim() : rawText.trim();
     
-    // Find first { and last }
     const firstBrace = cleanText.indexOf('{');
     const lastBrace = cleanText.lastIndexOf('}');
     if (firstBrace !== -1 && lastBrace !== -1) {
       const jsonSubstr = cleanText.substring(firstBrace, lastBrace + 1);
       const parsed = JSON.parse(jsonSubstr);
 
-      return {
-        healthScore: typeof parsed.healthScore === 'number' ? Math.max(0, Math.min(100, Math.round(parsed.healthScore))) : 85,
-        failureRiskPercent: typeof parsed.failureRiskPercent === 'number' ? Math.max(0, Math.min(100, Math.round(parsed.failureRiskPercent))) : 15,
-        remainingUsefulLifeMonths: typeof parsed.remainingUsefulLifeMonths === 'number' ? Math.max(0, Math.round(parsed.remainingUsefulLifeMonths)) : 24,
-        predictedNextMaintenanceDate: parsed.predictedNextMaintenanceDate || new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        insights: Array.isArray(parsed.insights) && parsed.insights.length > 0 ? parsed.insights.map(String) : ['AI evaluation complete'],
-        replacementRecommendation: ['keep', 'repair', 'replace'].includes(parsed.replacementRecommendation) ? parsed.replacementRecommendation : 'keep'
-      };
+      if (typeof parsed.healthScore === 'number' && !isNaN(parsed.healthScore)) {
+        let healthScore = Math.max(0, Math.min(100, Math.round(parsed.healthScore)));
+
+        // Guardrails against LLM hallucination / fixed template copying
+        if (fallbackContext.status === 'repair' || fallbackContext.openRepairCount > 0) {
+          if (healthScore > 48) {
+            healthScore = Math.min(42, calculateHeuristicHealth(fallbackContext).healthScore);
+          }
+        }
+
+        if (fallbackContext.status === 'retired') {
+          healthScore = 5;
+        }
+
+        if (fallbackContext.expectedLifespan > 0 && fallbackContext.ageInMonths > fallbackContext.expectedLifespan * 1.3) {
+          if (healthScore > 48) {
+            healthScore = Math.min(42, calculateHeuristicHealth(fallbackContext).healthScore);
+          }
+        }
+
+        // Ensure logical consistency between health score and risk / recommendations
+        let failureRiskPercent = typeof parsed.failureRiskPercent === 'number' && !isNaN(parsed.failureRiskPercent)
+          ? Math.max(0, Math.min(100, Math.round(parsed.failureRiskPercent)))
+          : Math.max(0, 100 - healthScore);
+
+        if (healthScore >= 75 && failureRiskPercent > 35) {
+          failureRiskPercent = Math.max(2, 100 - healthScore);
+        }
+
+        let recommendation = ['keep', 'repair', 'replace'].includes(parsed.replacementRecommendation)
+          ? parsed.replacementRecommendation
+          : (healthScore < 45 ? 'replace' : (healthScore < 70 ? 'repair' : 'keep'));
+
+        if (healthScore >= 75 && recommendation === 'replace' && fallbackContext.status !== 'retired') {
+          recommendation = 'keep';
+        } else if (healthScore <= 35 && recommendation === 'keep') {
+          recommendation = fallbackContext.status === 'repair' ? 'repair' : 'replace';
+        }
+
+        return {
+          healthScore,
+          failureRiskPercent,
+          remainingUsefulLifeMonths: typeof parsed.remainingUsefulLifeMonths === 'number' && !isNaN(parsed.remainingUsefulLifeMonths)
+            ? Math.max(0, Math.round(parsed.remainingUsefulLifeMonths))
+            : Math.max(0, Math.round((fallbackContext.expectedLifespan - fallbackContext.ageInMonths) * (healthScore / 100))),
+          predictedNextMaintenanceDate: parsed.predictedNextMaintenanceDate || new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          insights: Array.isArray(parsed.insights) && parsed.insights.length > 0 ? parsed.insights.map(String) : ['AI evaluation complete'],
+          replacementRecommendation: recommendation
+        };
+      }
     }
   } catch (err) {
     console.warn('⚠️ Could not parse Ollama JSON response, using heuristic fallback:', err.message);
@@ -313,8 +349,8 @@ export const analyzeAssetHealth = async (assetId, organizationId, user, options 
   const { force = false, cooldownMinutes = 15 } = options;
   const { asset, context } = await gatherAssetContext(assetId, organizationId);
 
-  // Check analysis cache & cooldown
-  if (!force && asset.ai?.lastAnalyzedAt) {
+  // Check analysis cache & cooldown (only if not forced and asset has already been analyzed with a non-null health score)
+  if (!force && asset.ai?.lastAnalyzedAt && typeof asset.ai?.healthScore === 'number') {
     const elapsedMinutes = (Date.now() - new Date(asset.ai.lastAnalyzedAt).getTime()) / (1000 * 60);
     if (elapsedMinutes < cooldownMinutes) {
       return {
@@ -352,7 +388,7 @@ export const analyzeAssetHealth = async (assetId, organizationId, user, options 
 
     const rawResponse = response.data?.response || '';
     aiResult = parseAIResponse(rawResponse, context);
-    console.log(`[AI Engine] Successfully generated health evaluation for ${asset.name} via ${selectedModel}`);
+    console.log(`[AI Engine] Successfully generated health evaluation for ${asset.name} via ${selectedModel} (Score: ${aiResult.healthScore}%)`);
   } catch (ollamaErr) {
     console.warn(`[AI Health] Ollama local API unavailable or model failed (${ollamaErr.message}). Utilizing intelligent heuristic engine.`);
     aiResult = calculateHeuristicHealth(context);

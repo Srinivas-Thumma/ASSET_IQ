@@ -46,8 +46,8 @@ export const assetApi = {
     return response.data?.data || response.data;
   },
 
-  analyzeAssetHealth: async (id) => {
-    const response = await api.post(`/assets/${id}/analyze`);
+  analyzeAssetHealth: async (id, force = true) => {
+    const response = await api.post(`/assets/${id}/analyze${force ? '?force=true' : ''}`);
     return response.data?.data || response.data;
   },
 

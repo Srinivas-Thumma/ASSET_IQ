@@ -47,10 +47,21 @@ export const getStatusColor = (status) => {
 };
 
 export const getAssetHealthScore = (asset) => {
-  if (!asset) return 95;
+  if (!asset) return 85;
   if (typeof asset.ai?.healthScore === 'number') return asset.ai.healthScore;
   if (typeof asset.healthScore === 'number') return asset.healthScore;
   if (typeof asset.aiHealthScore === 'number') return asset.aiHealthScore;
-  return 95;
+
+  if (asset.status === 'retired') return 5;
+  if (asset.status === 'repair') return 35;
+
+  if (asset.purchaseDate) {
+    const ageMonths = Math.max(0, Math.floor((Date.now() - new Date(asset.purchaseDate).getTime()) / (1000 * 60 * 60 * 24 * 30.4375)));
+    const lifespan = asset.categoryId?.expectedLifespanMonths || asset.expectedLifespanMonths || 36;
+    const ratio = Math.min(1.5, ageMonths / lifespan);
+    return Math.max(5, Math.min(100, Math.round(100 - (ratio * 55))));
+  }
+
+  return 85;
 };
 

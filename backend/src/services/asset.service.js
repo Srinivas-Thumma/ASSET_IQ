@@ -6,6 +6,7 @@ import Category from '../models/Category.js';
 import Employee from '../models/Employee.js';
 import ApiError from '../utils/ApiError.js';
 import { logAudit } from './audit.service.js';
+import { calculateHeuristicHealth } from './ai.service.js';
 
 export const calculateExpectedRetirement = (purchaseDate, lifespanMonths = 36) => {
   if (!purchaseDate) return null;
@@ -24,9 +25,22 @@ export const createAsset = async (data, user) => {
       lifespan = cat.expectedLifespanMonths;
     }
   }
-  lifespan = lifespan || 36;
+  lifespan = Number(lifespan) || 36;
 
   const expectedRetirementDate = calculateExpectedRetirement(data.purchaseDate, lifespan);
+
+  const ageMonths = data.purchaseDate
+    ? Math.max(0, Math.floor((Date.now() - new Date(data.purchaseDate).getTime()) / (1000 * 60 * 60 * 24 * 30.4375)))
+    : 0;
+
+  const initialHeuristic = calculateHeuristicHealth({
+    ageInMonths: ageMonths,
+    expectedLifespan: lifespan,
+    repairCount: 0,
+    openRepairCount: 0,
+    warrantyStatus: 'none',
+    status: data.status || 'stock'
+  });
 
   const assetData = {
     ...data,
@@ -39,14 +53,17 @@ export const createAsset = async (data, user) => {
     locationId: data.locationId && data.locationId.trim() ? data.locationId : null,
     status: data.status || 'stock',
     ai: {
-      healthScore: data.ai?.healthScore || 95,
-      failureRiskPercent: data.ai?.failureRiskPercent || 5,
-      remainingUsefulLifeMonths: data.ai?.remainingUsefulLifeMonths || lifespan,
-      predictedNextMaintenanceDate: data.ai?.predictedNextMaintenanceDate,
-      lastAnalyzedAt: new Date(),
-      replacementRecommendation: 'keep',
-      insights: ['Optimal thermal dissipation profile', 'Battery capacity nominal at 98%']
-    }
+      healthScore: initialHeuristic.healthScore,
+      failureRiskPercent: initialHeuristic.failureRiskPercent,
+      remainingUsefulLifeMonths: initialHeuristic.remainingUsefulLifeMonths,
+      predictedNextMaintenanceDate: initialHeuristic.predictedNextMaintenanceDate,
+      lastAnalyzedAt: null, // Null indicates pending official LLM analysis
+      replacementRecommendation: initialHeuristic.replacementRecommendation,
+      insights: initialHeuristic.insights
+    },
+    healthHistory: [
+      { score: initialHeuristic.healthScore, date: new Date() }
+    ]
   };
 
   const asset = await Asset.create(assetData);
@@ -415,34 +432,38 @@ export const renewWarranty = async (assetId, { newWarrantyEndDate, warrantyType 
 export const computeAndStoreHealthScore = async (assetId, organizationId = null) => {
   const query = organizationId ? { _id: assetId, organizationId } : { _id: assetId };
   const asset = await Asset.findOne(query);
-  if (!asset) return 95;
+  if (!asset) return null;
 
   const tickets = await Ticket.find({
     assetId,
-    organizationId: asset.organizationId,
-    status: { $ne: 'closed' }
+    organizationId: asset.organizationId
   }).lean();
-  const repairTickets = tickets.filter((t) => t.type === 'repair').length;
+  const repairTickets = tickets.filter((t) => t.type === 'repair' || t.issueType === 'hardware');
+  const openRepairTickets = repairTickets.filter((t) => ['open', 'claimed', 'in_progress'].includes(t.status));
 
-  let baseScore = 95;
-  if (asset.purchaseDate && asset.expectedLifespanMonths) {
-    const ageMonths = Math.max(0, (Date.now() - new Date(asset.purchaseDate).getTime()) / (1000 * 60 * 60 * 24 * 30.4));
-    const lifespanRatio = ageMonths / asset.expectedLifespanMonths;
-    if (lifespanRatio > 0.8) baseScore -= 15;
-    else if (lifespanRatio > 0.5) baseScore -= 8;
-  }
+  const lifespan = asset.expectedLifespanMonths || 36;
+  const ageMonths = asset.purchaseDate
+    ? Math.max(0, Math.floor((Date.now() - new Date(asset.purchaseDate).getTime()) / (1000 * 60 * 60 * 24 * 30.4375)))
+    : 0;
 
-  baseScore -= repairTickets * 12;
-  if (asset.status === 'repair') baseScore -= 20;
-
-  const finalScore = Math.max(10, Math.min(100, Math.round(baseScore)));
+  const heuristic = calculateHeuristicHealth({
+    ageInMonths: ageMonths,
+    expectedLifespan: lifespan,
+    repairCount: repairTickets.length,
+    openRepairCount: openRepairTickets.length,
+    status: asset.status
+  });
 
   asset.ai = asset.ai || {};
-  asset.ai.healthScore = finalScore;
+  asset.ai.healthScore = heuristic.healthScore;
+  asset.ai.failureRiskPercent = heuristic.failureRiskPercent;
+  asset.ai.remainingUsefulLifeMonths = heuristic.remainingUsefulLifeMonths;
+  asset.ai.replacementRecommendation = heuristic.replacementRecommendation;
+  asset.ai.insights = heuristic.insights;
   asset.ai.lastAnalyzedAt = new Date();
   await asset.save();
 
-  return finalScore;
+  return heuristic.healthScore;
 };
 
 export default {

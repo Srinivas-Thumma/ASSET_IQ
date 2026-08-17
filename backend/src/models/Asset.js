@@ -84,22 +84,23 @@ const assetSchema = new mongoose.Schema(
     ai: {
       healthScore: {
         type: Number,
-        default: 95
+        default: null
       },
       failureRiskPercent: {
         type: Number,
-        default: 5
+        default: null
       },
       remainingUsefulLifeMonths: {
         type: Number,
-        default: 34
+        default: null
       },
       predictedNextMaintenanceDate: {
-        type: Date
+        type: Date,
+        default: null
       },
       lastAnalyzedAt: {
         type: Date,
-        default: Date.now
+        default: null
       },
       replacementRecommendation: {
         type: String,
