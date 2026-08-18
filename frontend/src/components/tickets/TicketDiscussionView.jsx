@@ -39,6 +39,30 @@ import { useTicketSocket } from '../../hooks/useTicketSocket.js';
 import { formatDate, formatRelative } from '../../utils/formatters.js';
 import { toast } from 'sonner';
 
+const formatRoleLabel = (role) => {
+  if (!role) return 'Asset Manager';
+  const map = {
+    super_admin: 'Super Admin',
+    org_admin: 'Org Admin',
+    asset_manager: 'Asset Manager',
+    employee: 'Employee'
+  };
+  return map[role] || role;
+};
+
+const getUserDisplayName = (userObj, fallback = 'User') => {
+  if (!userObj) return fallback;
+  if (userObj.employeeRef && (userObj.employeeRef.firstName || userObj.employeeRef.lastName)) {
+    return `${userObj.employeeRef.firstName || ''} ${userObj.employeeRef.lastName || ''}`.trim();
+  }
+  if (userObj.name) return userObj.name;
+  if (userObj.firstName || userObj.lastName) {
+    return `${userObj.firstName || ''} ${userObj.lastName || ''}`.trim();
+  }
+  if (userObj.email) return userObj.email.split('@')[0];
+  return fallback;
+};
+
 export const TicketDiscussionView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -313,10 +337,10 @@ export const TicketDiscussionView = () => {
               Submitted By
             </span>
             <div className="flex items-center gap-2">
-              <Avatar name={ticket.raisedBy?.email || 'User'} size="sm" />
+              <Avatar name={getUserDisplayName(ticket.raisedBy, 'Employee')} size="sm" />
               <div className="truncate">
                 <span className="font-bold text-slate-800 dark:text-slate-200 block truncate">
-                  {ticket.raisedBy?.name || ticket.raisedBy?.email?.split('@')[0] || 'Employee'}
+                  {getUserDisplayName(ticket.raisedBy, 'Employee')}
                 </span>
                 <span className="text-[10px] text-slate-400 block truncate">
                   {ticket.raisedBy?.email}
@@ -331,13 +355,13 @@ export const TicketDiscussionView = () => {
             </span>
             {ticket.handler ? (
               <div className="flex items-center gap-2">
-                <Avatar name={ticket.handler?.email || 'IT Handler'} size="sm" />
+                <Avatar name={getUserDisplayName(ticket.handler, 'Asset Manager')} size="sm" />
                 <div className="truncate">
                   <span className="font-bold text-slate-800 dark:text-slate-200 block truncate">
-                    {ticket.handler?.name || ticket.handler?.email?.split('@')[0] || 'Asset Manager'}
+                    {getUserDisplayName(ticket.handler, 'Asset Manager')}
                   </span>
                   <span className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold block">
-                    IT Support
+                    {ticket.handler?.employeeRef?.jobTitle || formatRoleLabel(ticket.handler?.role || 'asset_manager')}
                   </span>
                 </div>
               </div>
@@ -561,7 +585,7 @@ export const TicketDiscussionView = () => {
                             {msg.senderName || msg.senderEmail?.split('@')[0]}
                           </span>
                           <span className="text-[9px] px-1.5 py-0.2 rounded-md font-bold uppercase tracking-wider border border-purple-300 dark:border-purple-800 text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950">
-                            {msg.senderRole === 'asset_manager' ? 'IT Support' : msg.senderRole || 'Member'}
+                            {formatRoleLabel(msg.senderRole)}
                           </span>
                         </div>
                       )}

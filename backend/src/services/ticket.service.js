@@ -4,10 +4,16 @@ import TicketMessage from '../models/TicketMessage.js';
 import Asset from '../models/Asset.js';
 import Organization from '../models/Organization.js';
 import User from '../models/User.js';
+import Employee from '../models/Employee.js';
 import ApiError from '../utils/ApiError.js';
 import { logAudit } from './audit.service.js';
 import { createNotification } from './notification.service.js';
 import { emitToTicket } from '../config/socket.js';
+
+const populateEmployee = {
+  path: 'employeeRef',
+  select: 'firstName lastName jobTitle email departmentId'
+};
 
 export const createTicket = async (data, user) => {
   const ticket = await Ticket.create({
@@ -18,14 +24,15 @@ export const createTicket = async (data, user) => {
   });
 
   // Auto-route if issueType matches org settings
-  const org = await Organization.findById(user.organizationId);
-  if (data.issueType && org?.settings?.defaultTicketRouting?.[data.issueType]) {
-    const routeTarget = org.settings.defaultTicketRouting[data.issueType];
-    if (routeTarget && routeTarget !== 'asset_manager' && mongoose.Types.ObjectId.isValid(routeTarget)) {
-      ticket.handler = routeTarget;
+  const org = await Organization.findById(user.organizationId).lean();
+  if (org?.settings?.autoRouteCategories) {
+    const autoHandler = org.settings.autoRouteCategories[data.issueType];
+    if (autoHandler) {
+      ticket.handler = autoHandler;
+      ticket.status = 'claimed';
+      await ticket.save();
     }
   }
-  await ticket.save();
 
   await logAudit({
     actorId: user._id,
@@ -33,34 +40,32 @@ export const createTicket = async (data, user) => {
     action: 'ticket_created',
     targetType: 'ticket',
     targetId: ticket._id,
-    metadata: { type: ticket.type, assetId: ticket.assetId },
+    metadata: { title: ticket.title, type: ticket.type, priority: ticket.priority },
     organizationId: user.organizationId
   });
 
   return ticket;
 };
 
-export const getTickets = async (organizationId, user, options = {}) => {
-  const { page, limit, search, status, type, priority } = options;
-  let baseQuery = {};
+export const getTickets = async (organizationId, filters = {}, user = null) => {
+  const { status, type, priority, handler, raisedBy, assetId, isEscalated, page, limit, search } = filters;
 
-  if (user.role === 'super_admin') {
-    baseQuery = organizationId ? { organizationId } : {};
-  } else if (user.role === 'asset_manager' || user.role === 'org_admin') {
-    baseQuery = { organizationId: user.organizationId };
-  } else {
-    // Employee: only tickets in user's organization raised by this employee
-    baseQuery = {
-      organizationId: user.organizationId,
-      raisedBy: user._id
-    };
-  }
+  const baseQuery = (user && user.role === 'super_admin') ? {} : { organizationId };
 
   if (status) baseQuery.status = status;
   if (type) baseQuery.type = type;
   if (priority) baseQuery.priority = priority;
+  if (handler) baseQuery.handler = handler;
+  if (raisedBy) baseQuery.raisedBy = raisedBy;
+  if (assetId) baseQuery.assetId = assetId;
+  if (isEscalated !== undefined) baseQuery.isEscalated = isEscalated === 'true' || isEscalated === true;
+
+  // Search by title or description
   if (search && typeof search === 'string' && search.trim()) {
-    baseQuery.title = { $regex: search.trim(), $options: 'i' };
+    baseQuery.$or = [
+      { title: { $regex: search.trim(), $options: 'i' } },
+      { description: { $regex: search.trim(), $options: 'i' } }
+    ];
   }
 
   if (page !== undefined || limit !== undefined) {
@@ -71,8 +76,8 @@ export const getTickets = async (organizationId, user, options = {}) => {
     const [items, total] = await Promise.all([
       Ticket.find(baseQuery)
         .populate('assetId', 'name assetCode status')
-        .populate('raisedBy', 'email name')
-        .populate('handler', 'email name')
+        .populate({ path: 'raisedBy', select: 'email role employeeRef', populate: populateEmployee })
+        .populate({ path: 'handler', select: 'email role employeeRef', populate: populateEmployee })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limitNum)
@@ -93,8 +98,8 @@ export const getTickets = async (organizationId, user, options = {}) => {
 
   return await Ticket.find(baseQuery)
     .populate('assetId', 'name assetCode status')
-    .populate('raisedBy', 'email name')
-    .populate('handler', 'email name')
+    .populate({ path: 'raisedBy', select: 'email role employeeRef', populate: populateEmployee })
+    .populate({ path: 'handler', select: 'email role employeeRef', populate: populateEmployee })
     .sort({ createdAt: -1 })
     .lean();
 };
@@ -110,8 +115,8 @@ export const getTicketById = async (ticketId, organizationId, user = null) => {
 
   const ticket = await Ticket.findOne(query)
     .populate('assetId', 'name assetCode status')
-    .populate('raisedBy', 'email name')
-    .populate('handler', 'email name')
+    .populate({ path: 'raisedBy', select: 'email role employeeRef', populate: populateEmployee })
+    .populate({ path: 'handler', select: 'email role employeeRef', populate: populateEmployee })
     .populate('categoryId', 'name')
     .lean();
 
@@ -138,10 +143,13 @@ export const getTicketById = async (ticketId, organizationId, user = null) => {
 };
 
 export const claimTicket = async (ticketId, priority, user) => {
-  const ticket = await Ticket.findOne({ _id: ticketId, organizationId: user.organizationId });
-  if (!ticket) throw new ApiError(404, 'Ticket not found');
-  if (ticket.handler && ticket.handler.toString() !== user._id.toString()) {
-    throw new ApiError(400, 'Ticket is already claimed by another manager');
+  const ticketQuery = user.role === 'super_admin'
+    ? { _id: ticketId }
+    : { _id: ticketId, organizationId: user.organizationId };
+
+  const ticket = await Ticket.findOne(ticketQuery);
+  if (!ticket) {
+    throw new ApiError(404, 'Ticket not found');
   }
 
   ticket.handler = user._id;
@@ -151,7 +159,19 @@ export const claimTicket = async (ticketId, priority, user) => {
   ticket.status = 'claimed';
   await ticket.save();
 
-  const managerName = user.email ? user.email.split('@')[0] : 'Asset Manager';
+  let managerName = 'Asset Manager';
+  if (user.employeeRef) {
+    const emp = await Employee.findById(user.employeeRef).select('firstName lastName').lean();
+    if (emp && (emp.firstName || emp.lastName)) {
+      managerName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim();
+    }
+  } else if (user.name) {
+    managerName = user.name;
+  } else if (user.email) {
+    managerName = user.email.split('@')[0];
+  }
+
+  const roleLabel = user.role === 'asset_manager' ? 'Asset Manager' : (user.role === 'org_admin' ? 'Org Admin' : 'Staff');
 
   // Create auto system message
   const sysMsg = await TicketMessage.create({
@@ -159,7 +179,7 @@ export const claimTicket = async (ticketId, priority, user) => {
     senderId: user._id,
     senderName: 'System Intelligence',
     senderRole: 'system',
-    message: `Ticket claimed by ${managerName}`,
+    message: `Ticket claimed by ${managerName} (${roleLabel})`,
     isInternal: false,
     isSystemMessage: true,
     organizationId: user.organizationId
@@ -186,7 +206,7 @@ export const claimTicket = async (ticketId, priority, user) => {
     action: 'ticket_claimed',
     targetType: 'ticket',
     targetId: ticket._id,
-    metadata: { priority: ticket.priority },
+    metadata: { priority: ticket.priority, handlerName: managerName },
     organizationId: user.organizationId
   });
 

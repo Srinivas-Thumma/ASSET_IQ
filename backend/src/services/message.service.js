@@ -1,5 +1,6 @@
 import TicketMessage from '../models/TicketMessage.js';
 import Ticket from '../models/Ticket.js';
+import Employee from '../models/Employee.js';
 import ApiError from '../utils/ApiError.js';
 import { emitToTicket } from '../config/socket.js';
 
@@ -26,12 +27,23 @@ export const createMessage = async (data, user) => {
     }
   }
 
+  let senderName = user.name;
+  if (!senderName && user.employeeRef) {
+    const emp = await Employee.findById(user.employeeRef).select('firstName lastName').lean();
+    if (emp && (emp.firstName || emp.lastName)) {
+      senderName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim();
+    }
+  }
+  if (!senderName && user.email) {
+    senderName = user.email.split('@')[0];
+  }
+
   const message = await TicketMessage.create({
     ticketId: data.ticketId,
     message: data.message,
     isInternal: Boolean(data.isInternal),
     senderId: user._id,
-    senderName: user.email || user.name || 'User',
+    senderName: senderName || 'User',
     senderRole: user.role,
     organizationId: ticket.organizationId
   });

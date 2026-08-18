@@ -189,10 +189,10 @@ export const TicketChat = ({
                       isMe ? 'text-purple-200' : 'text-purple-600 dark:text-purple-400'
                     }`}
                   >
-                    <span>{isMe ? 'You' : msg.senderName || 'IT Support'}</span>
+                    <span>{isMe ? 'You' : msg.senderName || 'Asset Manager'}</span>
                     {!isMe && (
                       <span className="px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 text-[9px]">
-                        Support
+                        {msg.senderRole === 'asset_manager' ? 'Asset Manager' : (msg.senderRole === 'org_admin' ? 'Org Admin' : 'Staff')}
                       </span>
                     )}
                   </div>
