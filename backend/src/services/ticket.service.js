@@ -47,10 +47,26 @@ export const createTicket = async (data, user) => {
   return ticket;
 };
 
-export const getTickets = async (organizationId, filters = {}, user = null) => {
+export const getTickets = async (organizationId, userOrFilters = {}, filtersOrUser = {}) => {
+  let user = null;
+  let filters = {};
+
+  if (userOrFilters && typeof userOrFilters === 'object' && userOrFilters.role !== undefined) {
+    user = userOrFilters;
+    filters = filtersOrUser || {};
+  } else if (filtersOrUser && typeof filtersOrUser === 'object' && filtersOrUser.role !== undefined) {
+    user = filtersOrUser;
+    filters = userOrFilters || {};
+  } else {
+    filters = userOrFilters || {};
+    user = filtersOrUser || null;
+  }
+
   const { status, type, priority, handler, raisedBy, assetId, isEscalated, page, limit, search } = filters;
 
-  const baseQuery = (user && user.role === 'super_admin') ? {} : { organizationId };
+  const baseQuery = (user && user.role === 'super_admin')
+    ? (organizationId ? { organizationId } : {})
+    : { organizationId: organizationId || user?.organizationId };
 
   if (status) baseQuery.status = status;
   if (type) baseQuery.type = type;

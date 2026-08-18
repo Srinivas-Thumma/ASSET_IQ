@@ -85,7 +85,7 @@ export const Plans = () => {
     setPrice(99);
     setMaxAssets(200);
     setMaxEmployees(100);
-    setFeatures(['Fleet Monitoring', 'QR Generation', 'Priority Support']);
+    setFeatures(['Asset Monitoring', 'QR Generation', 'Priority Support']);
     setTrialDays(14);
     setVisibility('public');
     setIsModalOpen(true);
@@ -131,7 +131,7 @@ export const Plans = () => {
     });
   };
 
-  const totalTenantsAcrossPlans = plans.reduce((acc, p) => acc + (p.subscriberCount || 0), 0) || 1;
+  const totalTenantsAcrossPlans = plans.reduce((acc, p) => acc + (p.subscribersCount ?? p.subscriberCount ?? p.subscribers ?? 0), 0) || 1;
 
   return (
     <div className="space-y-6">
@@ -174,7 +174,7 @@ export const Plans = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {plans.map((plan) => {
-            const subscribers = plan.subscriberCount || 0;
+            const subscribers = plan.subscribersCount ?? plan.subscriberCount ?? plan.subscribers ?? 0;
             const tenantSharePct = Math.round((subscribers / totalTenantsAcrossPlans) * 100);
             const mrr = subscribers * (plan.price || 0);
             const isExpanded = expandedAnalyticsId === plan._id;
@@ -328,7 +328,7 @@ export const Plans = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label="Max Fleet Hardware Quota"
+              label="Max Asset Hardware Quota"
               type="number"
               required
               value={maxAssets}

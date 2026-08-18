@@ -30,6 +30,7 @@ import {
   Cell
 } from 'recharts';
 import adminApi from '../../api/admin.api.js';
+import ticketApi from '../../api/ticket.api.js';
 import KpiCard from '../../components/ui/KpiCard.jsx';
 import Card, { CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/Card.jsx';
 import Button from '../../components/ui/Button.jsx';
@@ -79,11 +80,18 @@ export const SuperAdminDashboard = () => {
     queryFn: adminApi.getAlerts
   });
 
+  const { data: adminTickets = [] } = useQuery({
+    queryKey: ['admin-support-tickets'],
+    queryFn: () => ticketApi.getTickets({ type: 'admin_support' })
+  });
+
   // Calculate metrics
   const activeTenantsCount = organizations.filter((o) => o.status !== 'suspended').length || analytics?.activeTenants || 2;
-  const totalMrr = analytics?.totalMrr || organizations.reduce((sum, o) => sum + (o.plan?.priceMonthly || 49), 0) || 98;
-  const totalFleetAssets = analytics?.totalAssets || 45;
-  const openRequestsCount = alerts.filter((a) => a.severity === 'critical' || a.severity === 'warning').length;
+  const totalMrr = analytics?.totalMrr || organizations.reduce((sum, o) => sum + (o.plan?.priceMonthly || o.mrr || 49), 0) || 98;
+  const totalAssets = analytics?.totalAssets || organizations.reduce((sum, o) => sum + (o.stats?.totalAssets ?? o.assetCount ?? 0), 0) || 45;
+  const openRequestsCount = adminTickets.length > 0
+    ? adminTickets.filter((t) => ['open', 'claimed', 'in_progress'].includes(t.status)).length || adminTickets.length
+    : alerts.filter((a) => a.severity === 'critical' || a.severity === 'warning').length;
 
   // Plan Distribution Data
   const planCounts = organizations.reduce((acc, org) => {
@@ -181,7 +189,7 @@ export const SuperAdminDashboard = () => {
             Platform Overview
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Real-time platform telemetry, multi-tenant fleet health, and recurring revenue
+            Real-time platform telemetry, multi-tenant asset health, and recurring revenue
           </p>
         </div>
 
@@ -228,8 +236,8 @@ export const SuperAdminDashboard = () => {
         />
 
         <KpiCard
-          title="Fleet Assets"
-          value={isAnalyticsLoading ? '...' : totalFleetAssets}
+          title="Total Assets"
+          value={isAnalyticsLoading ? '...' : totalAssets}
           delta="+8.4%"
           deltaLabel="Active tracking"
           isPositive={true}

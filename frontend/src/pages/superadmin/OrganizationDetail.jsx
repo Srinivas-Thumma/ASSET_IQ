@@ -238,7 +238,7 @@ export const OrganizationDetail = () => {
         {/* Assets */}
         <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
           <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-            <HardDrive className="w-3.5 h-3.5 text-indigo-600" /> Fleet Assets
+            <HardDrive className="w-3.5 h-3.5 text-indigo-600" /> Total Assets
           </span>
           <div className="text-xl font-extrabold text-slate-900 dark:text-white">
             {stats.totalAssets} <span className="text-xs font-normal text-slate-400">/ {stats.maxAssets}</span>
@@ -251,10 +251,10 @@ export const OrganizationDetail = () => {
           </div>
         </div>
 
-        {/* Avg Fleet Health */}
+        {/* Avg Asset Health */}
         <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
           <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-            <Activity className="w-3.5 h-3.5 text-emerald-600" /> Avg Fleet Health
+            <Activity className="w-3.5 h-3.5 text-emerald-600" /> Avg Asset Health
           </span>
           <div className="text-xl font-extrabold text-slate-900 dark:text-white">
             {stats.avgFleetHealth} <span className="text-xs font-normal text-slate-400">/ 100</span>
@@ -307,7 +307,7 @@ export const OrganizationDetail = () => {
         {/* Navigation Tabs */}
         <div className="flex items-center gap-6 border-b border-slate-100 dark:border-slate-800 pb-3 overflow-x-auto">
           {[
-            { key: 'fleet', label: `Fleet Assets (${org.assets?.length || 0})`, icon: HardDrive },
+            { key: 'fleet', label: `Tracked Assets (${org.assets?.length || 0})`, icon: HardDrive },
             { key: 'employees', label: `Employee Directory (${org.employees?.length || 0})`, icon: Users },
             { key: 'tickets', label: `Support Tickets (${org.tickets?.length || 0})`, icon: Ticket },
             { key: 'billing', label: 'Subscription & Quota', icon: CreditCard },
@@ -529,7 +529,7 @@ export const OrganizationDetail = () => {
 
               <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="font-bold text-slate-700 dark:text-slate-200">Hardware Fleet Quota</span>
+                  <span className="font-bold text-slate-700 dark:text-slate-200">Hardware Asset Quota</span>
                   <span className="font-mono text-indigo-600 font-bold">
                     {stats.totalAssets} / {stats.maxAssets} ({Math.round((stats.totalAssets / stats.maxAssets) * 100)}%)
                   </span>

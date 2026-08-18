@@ -114,7 +114,7 @@ export const SuperAdminAnalytics = () => {
       trend: [1, 1, 2, 2, 2]
     },
     {
-      title: 'Fleet Assets',
+      title: 'Total Assets',
       value: stats?.totalAssets || 45,
       delta: stats?.assetGrowthRate || '+22.4%',
       deltaLabel: 'devices',
@@ -130,10 +130,10 @@ export const SuperAdminAnalytics = () => {
       trend: [5, 8, 10, 12]
     },
     {
-      title: 'Avg Fleet Health',
+      title: 'Avg Asset Health',
       value: `${stats?.avgFleetHealth || 95} / 100`,
       delta: 'Optimal',
-      deltaLabel: 'AI Fleet Condition',
+      deltaLabel: 'AI Asset Condition',
       icon: Activity,
       trend: [90, 92, 94, stats?.avgFleetHealth || 95]
     }
@@ -147,7 +147,7 @@ export const SuperAdminAnalytics = () => {
           Global Analytics & Telemetry
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-          Platform-wide financial performance, tenant growth velocities, and fleet reliability metrics
+          Platform-wide financial performance, tenant growth velocities, and asset reliability metrics
         </p>
       </div>
 
@@ -230,11 +230,11 @@ export const SuperAdminAnalytics = () => {
           </div>
         </Card>
 
-        {/* Top Fleet Tenants */}
+        {/* Top Asset Tenants */}
         <Card className="lg:col-span-6" hoverLift>
           <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
             <div>
-              <CardTitle>Top Fleet Scale Deployments</CardTitle>
+              <CardTitle>Top Asset Scale Deployments</CardTitle>
               <CardDescription>Tenants ranked by active hardware count</CardDescription>
             </div>
             <Badge variant="purple">Scale Leaders</Badge>

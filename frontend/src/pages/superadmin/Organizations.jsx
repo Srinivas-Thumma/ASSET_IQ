@@ -161,20 +161,20 @@ export const Organizations = () => {
     return orgs.reduce((sum, o) => sum + (o.plan?.priceMonthly || 49), 0);
   }, [orgs]);
 
-  const avgFleetHealth = useMemo(() => {
+  const avgAssetHealth = useMemo(() => {
     if (orgs.length === 0) return 95;
-    const scores = orgs.map((o) => o.avgHealth ?? 95);
+    const scores = orgs.map((o) => o.stats?.avgHealth ?? o.avgHealth ?? o.avgFleetHealth ?? 95);
     return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
   }, [orgs]);
 
   // Filtered Orgs
   const filteredOrgs = useMemo(() => {
     return orgs.filter((org) => {
-      const planName = (org.plan?.name || org.plan?.tier || 'starter').toLowerCase();
+      const planName = (org.plan?.name || org.plan?.tier || org.planId || 'starter').toLowerCase();
       const isPlanMatch = selectedPlanTab === 'all' || planName.includes(selectedPlanTab.toLowerCase());
       const isStatusMatch = statusFilter === 'all' || org.status === statusFilter;
 
-      const health = org.avgHealth ?? 95;
+      const health = org.stats?.avgHealth ?? org.avgHealth ?? org.avgFleetHealth ?? 95;
       let isHealthMatch = true;
       if (healthFilter === 'optimal') isHealthMatch = health >= 80;
       else if (healthFilter === 'fair') isHealthMatch = health >= 60 && health < 80;
@@ -237,7 +237,7 @@ export const Organizations = () => {
     setFormData({
       name: org.name || '',
       slug: org.slug || '',
-      planId: org.plan?._id || org.plan?.tier || 'starter'
+      planId: org.plan?._id || org.plan?.tier || org.planId || 'starter'
     });
     setIsEditOpen(true);
   };
@@ -252,12 +252,12 @@ export const Organizations = () => {
       o._id,
       `"${o.name || ''}"`,
       o.slug || '',
-      o.plan?.name || o.plan?.tier || 'Starter',
+      o.plan?.name || o.plan?.tier || o.planId || 'Starter',
       o.status || 'active',
-      o.stats?.totalAssets || 0,
-      o.stats?.maxAssets || 50,
-      `${o.avgHealth ?? 95}/100`,
-      o.plan?.priceMonthly || 49
+      o.stats?.totalAssets ?? o.assetCount ?? 0,
+      o.stats?.maxAssets ?? o.maxAssets ?? 100,
+      `${o.stats?.avgHealth ?? o.avgHealth ?? o.avgFleetHealth ?? 95}/100`,
+      o.plan?.priceMonthly ?? o.mrr ?? 49
     ]);
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
@@ -287,7 +287,7 @@ export const Organizations = () => {
             Tenant Command Center
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            {orgs.length} Active Tenants · ${totalMrr} MRR · {avgFleetHealth} / 100 Avg Fleet Health
+            {orgs.length} Active Tenants · ${totalMrr} MRR · {avgAssetHealth} / 100 Avg Asset Health
           </p>
         </div>
 
@@ -332,13 +332,13 @@ export const Organizations = () => {
         />
 
         <KpiCard
-          title="Fleet Reliability & Health"
-          value={`${avgFleetHealth} / 100`}
+          title="Asset Reliability & Health"
+          value={`${avgAssetHealth} / 100`}
           delta="Optimal"
-          deltaLabel="AI monitored across fleet"
-          isPositive={avgFleetHealth >= 80}
+          deltaLabel="AI monitored across assets"
+          isPositive={avgAssetHealth >= 80}
           icon={Activity}
-          trend={[90, 92, 94, 95, avgFleetHealth]}
+          trend={[90, 92, 94, 95, avgAssetHealth]}
         />
       </div>
 
@@ -428,7 +428,7 @@ export const Organizations = () => {
 
             <div>
               <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                Fleet Reliability Filter
+                Asset Health Filter
               </label>
               <select
                 value={healthFilter}
@@ -449,97 +449,87 @@ export const Organizations = () => {
       <AnimatePresence>
         {selectedOrgIds.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="p-3 bg-purple-900 text-white rounded-xl shadow-xl flex items-center justify-between gap-3 text-xs"
+            exit={{ opacity: 0, y: -8 }}
+            className="flex items-center justify-between p-3.5 bg-purple-50 dark:bg-purple-950/80 border border-purple-200 dark:border-purple-800 rounded-xl shadow-xs"
           >
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-purple-300" />
-              <span className="font-bold">{selectedOrgIds.length} organizations selected</span>
+            <div className="flex items-center gap-2 text-xs font-semibold text-[#6D28D9] dark:text-purple-300">
+              <CheckSquare className="w-4 h-4 text-[#6D28D9]" />
+              <span>{selectedOrgIds.length} organization(s) selected</span>
             </div>
 
             <div className="flex items-center gap-2">
               <Button
                 variant="secondary"
                 size="sm"
-                className="h-8 text-xs"
                 onClick={() => setIsBulkPlanModalOpen(true)}
               >
-                Change Plan
+                Change Tier
               </Button>
               <Button
-                variant="secondary"
+                variant="outline"
                 size="sm"
-                className="h-8 text-xs text-emerald-600 hover:text-emerald-700"
-                onClick={() => bulkStatusMutation.mutate({ ids: selectedOrgIds, status: 'active' })}
-              >
-                Activate
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="h-8 text-xs text-amber-600 hover:text-amber-700"
-                onClick={() => bulkStatusMutation.mutate({ ids: selectedOrgIds, status: 'suspended' })}
+                onClick={() =>
+                  bulkStatusMutation.mutate({
+                    ids: selectedOrgIds,
+                    status: 'suspended'
+                  })
+                }
               >
                 Suspend
               </Button>
               <Button
-                variant="destructive"
+                variant="danger"
                 size="sm"
-                className="h-8 text-xs"
+                icon={Trash2}
                 onClick={() => {
-                  if (window.confirm(`Are you sure you want to delete ${selectedOrgIds.length} organizations?`)) {
+                  if (confirm(`Delete ${selectedOrgIds.length} selected organizations permanently?`)) {
                     bulkDeleteMutation.mutate(selectedOrgIds);
                   }
                 }}
               >
-                Delete Selected
+                Delete
               </Button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* 5. Tenants Data Table */}
-      <Card className="p-0 overflow-hidden" hoverLift={false}>
+      {/* 5. Main Organizations Table */}
+      <Card className="overflow-hidden border border-slate-200/90 dark:border-slate-800" hoverLift={false}>
         {isOrgsLoading ? (
-          <div className="p-6 space-y-3">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-14 w-full" />
-            <Skeleton className="h-14 w-full" />
+          <div className="p-6 space-y-4">
+            <Skeleton className="h-10 w-full rounded-lg" />
+            <Skeleton className="h-16 w-full rounded-lg" />
+            <Skeleton className="h-16 w-full rounded-lg" />
+            <Skeleton className="h-16 w-full rounded-lg" />
           </div>
         ) : filteredOrgs.length === 0 ? (
-          /* Illustrated Empty State */
-          <div className="py-16 px-6 text-center space-y-3">
-            <div className="w-16 h-16 rounded-full bg-purple-50 dark:bg-purple-950/60 text-[#6D28D9] flex items-center justify-center mx-auto border border-purple-100 dark:border-purple-900/60">
-              <Building2 className="w-8 h-8 opacity-70" />
-            </div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">
-              No organizations match your filters
+          <div className="text-center py-16 px-4">
+            <Building2 className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-3" />
+            <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+              No Organizations Found
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-              We couldn't find any tenants matching your active search query or status criteria.
+            <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-4">
+              {searchTerm || statusFilter !== 'all' || healthFilter !== 'all' || selectedPlanTab !== 'all'
+                ? 'Try adjusting your search criteria or active filters.'
+                : 'Get started by provisioning your first tenant organization on the platform.'}
             </p>
             <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setSearchTerm('');
-                setSelectedPlanTab('all');
-                setStatusFilter('all');
-                setHealthFilter('all');
-              }}
+              variant="primary"
+              icon={Plus}
+              onClick={() => setIsCreateOpen(true)}
             >
-              Clear All Filters
+              Create Organization
             </Button>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
-              <thead className="bg-slate-50/80 dark:bg-slate-800/60 text-[11px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
-                <tr>
-                  <th className="p-4 w-8">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-900/50 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="w-10 p-4">
                     <input
                       type="checkbox"
                       checked={selectedOrgIds.length === filteredOrgs.length && filteredOrgs.length > 0}
@@ -551,8 +541,8 @@ export const Organizations = () => {
                   <th className="px-3 py-3.5">Slug</th>
                   <th className="px-3 py-3.5">Subscription Plan</th>
                   <th className="px-3 py-3.5">Employees Quota</th>
-                  <th className="px-3 py-3.5">Fleet Quota</th>
-                  <th className="px-3 py-3.5">Fleet Health</th>
+                  <th className="px-3 py-3.5">Asset Quota</th>
+                  <th className="px-3 py-3.5">Asset Health</th>
                   <th className="px-3 py-3.5">Status</th>
                   <th className="px-3 py-3.5">Last Active</th>
                   <th className="px-4 py-3.5 text-right">Actions</th>
@@ -562,12 +552,12 @@ export const Organizations = () => {
                 {filteredOrgs.map((org) => {
                   const isSelected = selectedOrgIds.includes(org._id);
                   const isSuspended = org.status === 'suspended';
-                  const health = org.avgHealth ?? 95;
-                  const totalAssets = org.stats?.totalAssets || 0;
-                  const maxAssets = org.stats?.maxAssets || 50;
-                  const totalEmp = org.stats?.totalEmployees || 1;
-                  const maxEmp = org.stats?.maxEmployees || 25;
-                  const planName = org.plan?.name || org.plan?.tier || 'Starter';
+                  const health = org.stats?.avgHealth ?? org.avgHealth ?? org.avgFleetHealth ?? 95;
+                  const totalAssets = org.stats?.totalAssets ?? org.assetCount ?? 0;
+                  const maxAssets = org.stats?.maxAssets ?? org.maxAssets ?? org.plan?.maxAssets ?? 100;
+                  const totalEmp = org.stats?.totalEmployees ?? org.employeeCount ?? 0;
+                  const maxEmp = org.stats?.maxEmployees ?? org.maxEmployees ?? org.plan?.maxEmployees ?? 50;
+                  const planName = org.plan?.name || org.plan?.tier || org.planId || 'Starter';
 
                   return (
                     <motion.tr
@@ -637,7 +627,7 @@ export const Organizations = () => {
                         </div>
                       </td>
 
-                      {/* Fleet Quota */}
+                      {/* Asset Quota */}
                       <td className="px-3 py-3">
                         <div className="w-24 space-y-1">
                           <div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400">
@@ -647,7 +637,7 @@ export const Organizations = () => {
                         </div>
                       </td>
 
-                      {/* Fleet Health */}
+                      {/* Asset Health */}
                       <td className="px-3 py-3">
                         <HealthScoreBadge score={health} size="sm" />
                       </td>

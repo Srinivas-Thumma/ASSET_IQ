@@ -22,7 +22,24 @@ export const getOrganizations = async () => {
     getPlans()
   ]);
 
-  const planMap = new Map(plans.map((p) => [p.slug || String(p._id), p]));
+  const normalizePlanSlug = (slug) => {
+    if (!slug) return 'starter';
+    const s = String(slug).toLowerCase();
+    if (s === 'growth' || s === 'pro' || s === 'professional' || s.includes('pro')) return 'professional';
+    if (s === 'enterprise' || s === 'ultra' || s.includes('enterp')) return 'enterprise';
+    return 'starter';
+  };
+
+  const planMap = new Map();
+  plans.forEach((p) => {
+    planMap.set(p.slug, p);
+    planMap.set(String(p._id), p);
+    if (p.slug === 'professional') {
+      planMap.set('growth', p);
+      planMap.set('pro', p);
+    }
+  });
+
   const orgIds = orgs.map((o) => o._id);
 
   const [employees, assets, tickets, healthStats] = await Promise.all([
@@ -55,19 +72,37 @@ export const getOrganizations = async () => {
   const healthMap = new Map(healthStats.map((h) => [String(h._id), Math.round(h.avgHealth || 92)]));
 
   return orgs.map((org) => {
-    const plan = planMap.get(org.planId) || planMap.get('starter') || { maxEmployees: 50, maxAssets: 100, price: 49 };
+    const matchedPlan = planMap.get(org.planId) || planMap.get(normalizePlanSlug(org.planId)) || planMap.get('starter') || plans[0] || { name: 'Starter Tier', maxEmployees: 50, maxAssets: 100, price: 49 };
     const empCount = empMap.get(String(org._id)) || 0;
     const assetCount = assetMap.get(String(org._id)) || 0;
     const openTicketsCount = ticketMap.get(String(org._id)) || 0;
     const avgHealth = healthMap.get(String(org._id)) || 92;
 
+    const planObj = {
+      _id: matchedPlan._id,
+      name: matchedPlan.name || 'Starter Tier',
+      tier: matchedPlan.slug || org.planId || 'starter',
+      priceMonthly: matchedPlan.price || 49,
+      maxAssets: matchedPlan.maxAssets || 100,
+      maxEmployees: matchedPlan.maxEmployees || 50
+    };
+
     return {
       ...org,
+      stats: {
+        totalEmployees: empCount,
+        maxEmployees: matchedPlan.maxEmployees || 50,
+        totalAssets: assetCount,
+        maxAssets: matchedPlan.maxAssets || 100,
+        avgHealth: avgHealth
+      },
+      plan: planObj,
       employeeCount: empCount,
       assetCount: assetCount,
-      maxEmployees: plan.maxEmployees || 50,
-      maxAssets: plan.maxAssets || 100,
-      mrr: plan.price || 49,
+      maxEmployees: matchedPlan.maxEmployees || 50,
+      maxAssets: matchedPlan.maxAssets || 100,
+      mrr: matchedPlan.price || 49,
+      avgHealth: avgHealth,
       avgFleetHealth: avgHealth,
       openTicketsCount,
       lastActive: org.updatedAt || org.createdAt
@@ -348,8 +383,19 @@ export const getPlans = async () => {
   const orgs = await Organization.find({}).lean();
   const totalOrgsCount = Math.max(orgs.length, 1);
 
+  const normalizePlanSlug = (slug) => {
+    if (!slug) return 'starter';
+    const s = String(slug).toLowerCase();
+    if (s === 'growth' || s === 'pro' || s === 'professional' || s.includes('pro')) return 'professional';
+    if (s === 'enterprise' || s === 'ultra' || s.includes('enterp')) return 'enterprise';
+    return 'starter';
+  };
+
   return plans.map((plan) => {
-    const subscriberOrgs = orgs.filter((o) => o.planId === plan.slug || String(o.planId) === String(plan._id));
+    const subscriberOrgs = orgs.filter((o) => {
+      const orgPlan = normalizePlanSlug(o.planId);
+      return orgPlan === plan.slug || o.planId === plan.slug || String(o.planId) === String(plan._id);
+    });
     const subscribersCount = subscriberOrgs.length;
     const mrr = subscribersCount * (plan.price || 0);
     const usagePercent = Math.round((subscribersCount / totalOrgsCount) * 100);
@@ -363,6 +409,8 @@ export const getPlans = async () => {
     return {
       ...plan,
       subscribersCount,
+      subscriberCount: subscribersCount,
+      subscribers: subscribersCount,
       mrr,
       usagePercent,
       recentSignups,
