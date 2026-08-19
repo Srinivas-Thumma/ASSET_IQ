@@ -50,6 +50,22 @@ export const createTicket = async (data, user) => {
     organizationId: user.organizationId
   });
 
+  // Notify SuperAdmin if this is a Platform Support Request
+  if (ticket.type === 'admin_support') {
+    const superAdmins = await User.find({ role: 'super_admin', status: 'active' }).select('_id').lean();
+    for (const sa of superAdmins) {
+      await createNotification({
+        userId: sa._id,
+        organizationId: user.organizationId,
+        type: 'admin_support_created',
+        title: 'New Platform Support Request',
+        message: `Organization "${org?.name || 'Tenant'}" created a platform support request: "${ticket.title}".`,
+        relatedId: ticket._id,
+        relatedType: 'ticket'
+      });
+    }
+  }
+
   return ticket;
 };
 
@@ -167,13 +183,17 @@ export const getTicketById = async (ticketId, organizationId, user = null) => {
 };
 
 export const claimTicket = async (ticketId, priority, user) => {
-  if (user?.role === 'super_admin') {
-    throw new ApiError(403, 'SuperAdmin access is read-only. Claiming operational tickets is not permitted.');
-  }
+  const ticketQuery = user?.role === 'super_admin'
+    ? { _id: ticketId }
+    : { _id: ticketId, organizationId: user.organizationId };
 
-  const ticket = await Ticket.findOne({ _id: ticketId, organizationId: user.organizationId });
+  const ticket = await Ticket.findOne(ticketQuery);
   if (!ticket) {
     throw new ApiError(404, 'Ticket not found');
+  }
+
+  if (user?.role === 'super_admin' && ticket.type !== 'admin_support') {
+    throw new ApiError(403, 'SuperAdmin access is read-only. Claiming operational tickets is not permitted.');
   }
 
   ticket.handler = user._id;
@@ -183,19 +203,23 @@ export const claimTicket = async (ticketId, priority, user) => {
   ticket.status = 'claimed';
   await ticket.save();
 
-  let managerName = 'Asset Manager';
-  if (user.employeeRef) {
-    const emp = await Employee.findById(user.employeeRef).select('firstName lastName').lean();
-    if (emp && (emp.firstName || emp.lastName)) {
-      managerName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim();
+  let managerName = user.role === 'super_admin' ? 'SuperAdmin (Platform)' : 'Asset Manager';
+  if (user.role !== 'super_admin') {
+    if (user.employeeRef) {
+      const emp = await Employee.findById(user.employeeRef).select('firstName lastName').lean();
+      if (emp && (emp.firstName || emp.lastName)) {
+        managerName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim();
+      }
+    } else if (user.name) {
+      managerName = user.name;
+    } else if (user.email) {
+      managerName = user.email.split('@')[0];
     }
-  } else if (user.name) {
-    managerName = user.name;
-  } else if (user.email) {
-    managerName = user.email.split('@')[0];
   }
 
-  const roleLabel = user.role === 'asset_manager' ? 'Asset Manager' : (user.role === 'org_admin' ? 'Org Admin' : 'Staff');
+  const roleLabel = user.role === 'super_admin'
+    ? 'Platform Administration'
+    : (user.role === 'asset_manager' ? 'Asset Manager' : (user.role === 'org_admin' ? 'Org Admin' : 'Staff'));
 
   // Create auto system message
   const sysMsg = await TicketMessage.create({
@@ -203,22 +227,26 @@ export const claimTicket = async (ticketId, priority, user) => {
     senderId: user._id,
     senderName: 'System Intelligence',
     senderRole: 'system',
-    message: `Ticket claimed by ${managerName} (${roleLabel})`,
+    message: ticket.type === 'admin_support'
+      ? `Platform support request claimed by ${managerName}`
+      : `Ticket claimed by ${managerName} (${roleLabel})`,
     isInternal: false,
     isSystemMessage: true,
-    organizationId: user.organizationId
+    organizationId: ticket.organizationId
   });
 
   emitToTicket(ticket._id, 'new-message', sysMsg);
 
-  // Notify employee who raised the ticket
+  // Notify requester
   if (ticket.raisedBy && ticket.raisedBy.toString() !== user._id.toString()) {
     await createNotification({
       userId: ticket.raisedBy,
-      organizationId: user.organizationId,
-      type: 'ticket_claimed',
-      title: 'Ticket Claimed',
-      message: `Your ticket "${ticket.title}" has been claimed by ${managerName}.`,
+      organizationId: ticket.organizationId,
+      type: ticket.type === 'admin_support' ? 'admin_support_status' : 'ticket_claimed',
+      title: ticket.type === 'admin_support' ? 'Support Case Claimed' : 'Ticket Claimed',
+      message: ticket.type === 'admin_support'
+        ? `Your platform support request "${ticket.title}" has been claimed by ${managerName}.`
+        : `Your ticket "${ticket.title}" has been claimed by ${managerName}.`,
       relatedId: ticket._id,
       relatedType: 'ticket'
     });
@@ -230,33 +258,37 @@ export const claimTicket = async (ticketId, priority, user) => {
     action: 'ticket_claimed',
     targetType: 'ticket',
     targetId: ticket._id,
-    metadata: { priority: ticket.priority, handlerName: managerName },
-    organizationId: user.organizationId
+    metadata: { priority: ticket.priority, handlerName: managerName, ticketType: ticket.type },
+    organizationId: ticket.organizationId
   });
 
   return ticket;
 };
 
 export const resolveTicket = async (ticketId, data, user) => {
-  if (user?.role === 'super_admin') {
+  const ticketQuery = user?.role === 'super_admin'
+    ? { _id: ticketId }
+    : { _id: ticketId, organizationId: user.organizationId };
+
+  const ticket = await Ticket.findOne(ticketQuery);
+  if (!ticket) throw new ApiError(404, 'Ticket not found');
+
+  if (user?.role === 'super_admin' && ticket.type !== 'admin_support') {
     throw new ApiError(403, 'SuperAdmin access is read-only. Resolving operational tickets is not permitted.');
   }
-
-  const ticket = await Ticket.findOne({ _id: ticketId, organizationId: user.organizationId });
-  if (!ticket) throw new ApiError(404, 'Ticket not found');
 
   if (!ticket.handler) {
     ticket.handler = user._id;
   }
 
   const { resolutionNotes, assetStateChange } = data || {};
-  ticket.resolutionNotes = resolutionNotes || 'Resolved by IT support';
+  ticket.resolutionNotes = resolutionNotes || (ticket.type === 'admin_support' ? 'Resolved by Platform Administration' : 'Resolved by IT support');
   ticket.resolvedAt = new Date();
   ticket.resolvedBy = user._id;
   ticket.status = 'resolved';
 
   let statusChangeSummary = '';
-  if (assetStateChange) {
+  if (assetStateChange && ticket.type !== 'admin_support') {
     const targetStatus = typeof assetStateChange === 'object' ? assetStateChange.to : assetStateChange;
     if (targetStatus && ticket.assetId) {
       const asset = await Asset.findById(ticket.assetId);
@@ -287,7 +319,9 @@ export const resolveTicket = async (ticketId, data, user) => {
     senderId: user._id,
     senderName: 'System Intelligence',
     senderRole: 'system',
-    message: `Ticket marked as Resolved: ${resolutionNotes || 'Issue fixed'}${statusChangeSummary}`,
+    message: ticket.type === 'admin_support'
+      ? `Platform Support Request resolved: ${resolutionNotes || 'Case closed by platform administrator'}`
+      : `Ticket marked as Resolved: ${resolutionNotes || 'Issue fixed'}${statusChangeSummary}`,
     isInternal: false,
     isSystemMessage: true,
     organizationId: ticket.organizationId
@@ -295,14 +329,16 @@ export const resolveTicket = async (ticketId, data, user) => {
 
   emitToTicket(ticket._id, 'new-message', sysMsg);
 
-  // Notify employee
+  // Notify requester
   if (ticket.raisedBy && ticket.raisedBy.toString() !== user._id.toString()) {
     await createNotification({
       userId: ticket.raisedBy,
       organizationId: ticket.organizationId,
-      type: 'ticket_resolved',
-      title: 'Ticket Resolved',
-      message: `Your ticket "${ticket.title}" has been marked as resolved: ${resolutionNotes || 'Issue fixed'}`,
+      type: ticket.type === 'admin_support' ? 'admin_support_status' : 'ticket_resolved',
+      title: ticket.type === 'admin_support' ? 'Platform Support Request Resolved' : 'Ticket Resolved',
+      message: ticket.type === 'admin_support'
+        ? `Your platform support request "${ticket.title}" has been resolved: ${resolutionNotes || 'Resolution completed.'}`
+        : `Your ticket "${ticket.title}" has been marked as resolved: ${resolutionNotes || 'Issue fixed'}`,
       relatedId: ticket._id,
       relatedType: 'ticket'
     });
@@ -314,7 +350,7 @@ export const resolveTicket = async (ticketId, data, user) => {
     action: 'ticket_resolved',
     targetType: 'ticket',
     targetId: ticket._id,
-    metadata: { resolutionNotes, assetStateChange },
+    metadata: { resolutionNotes, assetStateChange, ticketType: ticket.type },
     organizationId: ticket.organizationId
   });
 
@@ -361,12 +397,16 @@ export const escalateTicket = async (ticketId, user) => {
 };
 
 export const updateTicketStatus = async (ticketId, data, user) => {
-  if (user?.role === 'super_admin') {
+  const ticketQuery = user?.role === 'super_admin'
+    ? { _id: ticketId }
+    : { _id: ticketId, organizationId: user.organizationId };
+
+  const ticket = await Ticket.findOne(ticketQuery);
+  if (!ticket) throw new ApiError(404, 'Ticket not found');
+
+  if (user?.role === 'super_admin' && ticket.type !== 'admin_support') {
     throw new ApiError(403, 'SuperAdmin access is read-only. Updating ticket status is not permitted.');
   }
-
-  const ticket = await Ticket.findOne({ _id: ticketId, organizationId: user.organizationId });
-  if (!ticket) throw new ApiError(404, 'Ticket not found');
 
   const { status, resolutionNotes, priority, assetStateChange } = data || {};
   const previousStatus = ticket.status;
@@ -390,7 +430,7 @@ export const updateTicketStatus = async (ticketId, data, user) => {
   }
 
   let statusChangeSummary = '';
-  if (assetStateChange && ticket.assetId) {
+  if (assetStateChange && ticket.assetId && ticket.type !== 'admin_support') {
     const targetStatus = typeof assetStateChange === 'object' ? assetStateChange.to : assetStateChange;
     if (targetStatus) {
       const asset = await Asset.findById(ticket.assetId);
@@ -422,7 +462,9 @@ export const updateTicketStatus = async (ticketId, data, user) => {
     senderId: user._id,
     senderName: 'System Intelligence',
     senderRole: 'system',
-    message: `Ticket status updated to ${statusLabel}: ${resolutionNotes || 'Status updated by administrator'}${statusChangeSummary}`,
+    message: ticket.type === 'admin_support'
+      ? `Platform support status updated to ${statusLabel}: ${resolutionNotes || 'Status updated by administrator'}`
+      : `Ticket status updated to ${statusLabel}: ${resolutionNotes || 'Status updated by administrator'}${statusChangeSummary}`,
     isInternal: false,
     isSystemMessage: true,
     organizationId: ticket.organizationId
@@ -430,14 +472,14 @@ export const updateTicketStatus = async (ticketId, data, user) => {
 
   emitToTicket(ticket._id, 'new-message', sysMsg);
 
-  // Notify employee if resolved or closed
-  if (['resolved', 'closed'].includes(status) && ticket.raisedBy && ticket.raisedBy.toString() !== user._id.toString()) {
+  // Notify requester
+  if (['resolved', 'closed', 'in_progress'].includes(status) && ticket.raisedBy && ticket.raisedBy.toString() !== user._id.toString()) {
     await createNotification({
       userId: ticket.raisedBy,
       organizationId: ticket.organizationId,
-      type: status === 'resolved' ? 'ticket_resolved' : 'ticket_claimed',
-      title: `Ticket ${status === 'resolved' ? 'Resolved' : 'Updated'}`,
-      message: `Your ticket "${ticket.title}" status changed to ${status}: ${resolutionNotes || 'Status updated'}`,
+      type: ticket.type === 'admin_support' ? 'admin_support_status' : (status === 'resolved' ? 'ticket_resolved' : 'ticket_claimed'),
+      title: ticket.type === 'admin_support' ? `Support Case ${status === 'resolved' ? 'Resolved' : 'Updated'}` : `Ticket ${status === 'resolved' ? 'Resolved' : 'Updated'}`,
+      message: `Your support request "${ticket.title}" status changed to ${status}: ${resolutionNotes || 'Status updated.'}`,
       relatedId: ticket._id,
       relatedType: 'ticket'
     });
@@ -449,7 +491,7 @@ export const updateTicketStatus = async (ticketId, data, user) => {
     action: status === 'resolved' ? 'ticket_resolved' : 'ticket_claimed',
     targetType: 'ticket',
     targetId: ticket._id,
-    metadata: { from: previousStatus, to: ticket.status, resolutionNotes, priority },
+    metadata: { from: previousStatus, to: ticket.status, resolutionNotes, priority, ticketType: ticket.type },
     organizationId: ticket.organizationId
   });
 

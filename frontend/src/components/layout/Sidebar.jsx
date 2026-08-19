@@ -18,7 +18,8 @@ import {
   Settings,
   LogOut,
   ShieldCheck,
-  CreditCard
+  CreditCard,
+  LifeBuoy
 } from 'lucide-react';
 import SidebarItem from '../ui/SidebarItem.jsx';
 import Avatar from '../ui/Avatar.jsx';
@@ -171,8 +172,8 @@ export const Sidebar = () => {
             />
             <SidebarItem
               path="/admin/support"
-              icon={Ticket}
-              label="Admin Requests"
+              icon={LifeBuoy}
+              label="Platform Support"
               isExpanded={isExpanded}
             />
 
@@ -304,10 +305,16 @@ export const Sidebar = () => {
               isExpanded={isExpanded}
             />
 
-            {/* SETTINGS */}
+            {/* SUPPORT & SETTINGS */}
             <div className="pt-3 pb-1">
               <div className="h-px bg-slate-100 dark:bg-slate-800 my-1 mx-2" />
             </div>
+            <SidebarItem
+              path="/platform-support"
+              icon={LifeBuoy}
+              label="Platform Support"
+              isExpanded={isExpanded}
+            />
             <SidebarItem
               path="/settings"
               icon={Settings}

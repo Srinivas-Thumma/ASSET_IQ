@@ -30,6 +30,7 @@ const auditLogSchema = new mongoose.Schema(
         "ticket_claimed",
         "ticket_resolved",
         "ticket_escalated",
+        "ticket_message_created",
         "return_initiated",
         "retirement_requested",
         "retirement_approved",

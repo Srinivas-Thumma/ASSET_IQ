@@ -22,7 +22,10 @@ const notificationSchema = new mongoose.Schema(
         "return_initiated",
         "inspection_completed",
         "warranty_alert",
-        "warranty_expiry"
+        "warranty_expiry",
+        "admin_support_created",
+        "admin_support_reply",
+        "admin_support_status"
       ],
       required: true
     },

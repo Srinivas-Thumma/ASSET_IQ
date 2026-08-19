@@ -3,17 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   LifeBuoy,
+  Plus,
   MessageSquare,
-  Building2,
-  ExternalLink,
   Search,
   Filter,
   CheckCircle2,
-  AlertTriangle,
   Clock,
-  Sparkles,
   ShieldCheck,
-  Tag
+  Tag,
+  ExternalLink
 } from 'lucide-react';
 import ticketApi from '../../api/ticket.api.js';
 import Card from '../../components/ui/Card.jsx';
@@ -22,126 +20,123 @@ import Button from '../../components/ui/Button.jsx';
 import Breadcrumbs from '../../components/ui/Breadcrumbs.jsx';
 import EmptyState from '../../components/ui/EmptyState.jsx';
 import Skeleton from '../../components/ui/Skeleton.jsx';
+import ContactPlatformSupportModal from '../../components/modals/ContactPlatformSupportModal.jsx';
 import { formatDate, formatRelative } from '../../utils/formatters.js';
 
-export const AdminSupportQueue = () => {
+export const PlatformSupport = () => {
   const navigate = useNavigate();
-  const [activeStatusTab, setActiveStatusTab] = useState('all'); // 'all' | 'open' | 'in_progress' | 'resolved'
-  const [activeCategory, setActiveCategory] = useState('all');
+  const [activeTab, setActiveTab] = useState('active'); // 'all' | 'active' | 'resolved'
   const [searchQuery, setSearchQuery] = useState('');
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
 
   const { data: tickets = [], isLoading } = useQuery({
-    queryKey: ['admin-support-tickets'],
+    queryKey: ['platform-support-tickets'],
     queryFn: () => ticketApi.getTickets({ type: 'admin_support' })
   });
 
-  const categories = [
-    { key: 'all', label: 'All Categories' },
-    { key: 'billing', label: 'Billing & Subscriptions' },
-    { key: 'plan_upgrade', label: 'Plan & Quotas' },
-    { key: 'policy', label: 'Configuration & Access' },
-    { key: 'technical', label: 'Technical Issues' },
-    { key: 'other', label: 'General / Other' }
-  ];
+  const categoryLabels = {
+    billing: 'Billing & Subscriptions',
+    plan_upgrade: 'Plan & Quotas',
+    policy: 'Configuration & Access',
+    technical: 'Technical Bug',
+    other: 'General Inquiry'
+  };
 
   const filteredTickets = useMemo(() => {
     return (Array.isArray(tickets) ? tickets : []).filter((t) => {
-      // 1. Status Filter
-      if (activeStatusTab === 'open' && t.status !== 'open') return false;
-      if (activeStatusTab === 'in_progress' && !['claimed', 'in_progress'].includes(t.status)) return false;
-      if (activeStatusTab === 'resolved' && !['resolved', 'closed'].includes(t.status)) return false;
+      const isResolved = t.status === 'resolved' || t.status === 'closed';
+      if (activeTab === 'active' && isResolved) return false;
+      if (activeTab === 'resolved' && !isResolved) return false;
 
-      // 2. Category Filter
-      if (activeCategory !== 'all' && t.issueType !== activeCategory) return false;
-
-      // 3. Search Query
-      const q = searchQuery.toLowerCase().trim();
+      const q = searchQuery.toLowerCase();
       if (!q) return true;
       return (
         t.title?.toLowerCase().includes(q) ||
-        t._id?.toLowerCase().includes(q) ||
-        t.organizationName?.toLowerCase().includes(q) ||
-        t.description?.toLowerCase().includes(q)
+        t.description?.toLowerCase().includes(q) ||
+        t._id?.toLowerCase().includes(q)
       );
     });
-  }, [tickets, activeStatusTab, activeCategory, searchQuery]);
+  }, [tickets, activeTab, searchQuery]);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
       <Breadcrumbs
         items={[
-          { label: 'Platform Administration', to: '/admin/dashboard' },
-          { label: 'Platform Support Requests' }
+          { label: 'Governance', to: '/dashboard' },
+          { label: 'Platform Support' }
         ]}
       />
 
       {/* Header */}
-      <div>
-        <h1 className="text-[28px] font-bold text-slate-900 dark:text-white tracking-tight mb-1">
-          Platform Support & Enterprise Requests
-        </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-          Dedicated administrative queue for tenant escalations, subscription adjustments, and platform assistance raised by Organization Administrators.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-[28px] font-bold text-slate-900 dark:text-white tracking-tight mb-1">
+            Platform Support & Escalations
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Direct, audited communication channel between your organization and AssetOwl Platform Administration.
+          </p>
+        </div>
+
+        <Button
+          variant="primary"
+          icon={Plus}
+          onClick={() => setIsContactModalOpen(true)}
+          className="self-start sm:self-auto text-xs"
+        >
+          Contact Platform Support
+        </Button>
       </div>
 
       {/* Filter Tabs & Search */}
-      <Card className="p-4 space-y-4" hoverLift={false}>
-        {/* Top row: Status Tabs + Search */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <Card className="p-4 space-y-3" hoverLift={false}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700/60 self-start sm:self-auto">
-            {[
-              { key: 'all', label: 'All Cases', count: tickets.length },
-              { key: 'open', label: 'Open / Triage', count: tickets.filter((t) => t.status === 'open').length },
-              { key: 'in_progress', label: 'In Progress', count: tickets.filter((t) => ['claimed', 'in_progress'].includes(t.status)).length },
-              { key: 'resolved', label: 'Resolved', count: tickets.filter((t) => ['resolved', 'closed'].includes(t.status)).length }
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setActiveStatusTab(tab.key)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                  activeStatusTab === tab.key
-                    ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-xs'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                {tab.label} ({tab.count})
-              </button>
-            ))}
+            <button
+              type="button"
+              onClick={() => setActiveTab('active')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                activeTab === 'active'
+                  ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-xs'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              Active Cases
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('resolved')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                activeTab === 'resolved'
+                  ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-xs'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              Resolved History
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                activeTab === 'all'
+                  ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-xs'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              All Requests ({tickets.length})
+            </button>
           </div>
 
-          <div className="relative w-full md:w-72">
+          <div className="relative w-full sm:w-72">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by subject, tenant organization..."
+              placeholder="Search by case title or keywords..."
               className="w-full h-9 pl-9 pr-3 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-600"
             />
           </div>
-        </div>
-
-        {/* Bottom row: Category Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mr-2 shrink-0">
-            Category:
-          </span>
-          {categories.map((cat) => (
-            <button
-              key={cat.key}
-              type="button"
-              onClick={() => setActiveCategory(cat.key)}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                activeCategory === cat.key
-                  ? 'bg-purple-600 text-white shadow-xs'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
         </div>
       </Card>
 
@@ -155,8 +150,16 @@ export const AdminSupportQueue = () => {
       ) : filteredTickets.length === 0 ? (
         <EmptyState
           icon={LifeBuoy}
-          title="No platform support requests in queue"
-          description="There are currently no platform support tickets matching the selected filters."
+          title={
+            activeTab === 'active'
+              ? 'No active platform support cases'
+              : 'No support requests found'
+          }
+          description={
+            activeTab === 'active'
+              ? 'Your organization has no open cases with AssetOwl Platform Administration.'
+              : 'No platform support requests matched the selected filter.'
+          }
         />
       ) : (
         <Card className="p-0 overflow-hidden" hoverLift={false}>
@@ -165,38 +168,32 @@ export const AdminSupportQueue = () => {
               <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-400 text-[11px] uppercase font-bold tracking-wider border-b border-slate-100 dark:border-slate-800">
                 <tr>
                   <th className="px-5 py-3.5">Case ID</th>
-                  <th className="px-4 py-3.5">Request Subject</th>
-                  <th className="px-4 py-3.5">Tenant Organization</th>
+                  <th className="px-4 py-3.5">Subject</th>
                   <th className="px-4 py-3.5">Category</th>
                   <th className="px-4 py-3.5">Priority</th>
                   <th className="px-4 py-3.5">Status</th>
                   <th className="px-4 py-3.5">Created</th>
-                  <th className="px-5 py-3.5 text-right">Actions</th>
+                  <th className="px-5 py-3.5 text-right">Discussion</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filteredTickets.map((tkt) => {
-                  const caseCode = `SUP-${tkt._id.slice(-6).toUpperCase()}`;
-
+                  const caseId = `SUP-${tkt._id.slice(-6).toUpperCase()}`;
                   return (
                     <tr
                       key={tkt._id}
                       className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                     >
                       <td className="px-5 py-3.5 font-mono font-bold text-purple-700 dark:text-purple-400">
-                        {caseCode}
+                        {caseId}
                       </td>
 
                       <td className="px-4 py-3.5 font-bold text-slate-900 dark:text-white max-w-xs truncate">
                         {tkt.title}
                       </td>
 
-                      <td className="px-4 py-3.5 text-slate-600 dark:text-slate-300 font-medium">
-                        {tkt.organizationName || tkt.organizationId?.name || 'Tenant Org'}
-                      </td>
-
-                      <td className="px-4 py-3.5 capitalize text-slate-500">
-                        {tkt.issueType?.replace('_', ' ') || 'Support'}
+                      <td className="px-4 py-3.5 text-slate-600 dark:text-slate-300">
+                        {categoryLabels[tkt.issueType] || tkt.issueType || 'General'}
                       </td>
 
                       <td className="px-4 py-3.5 uppercase font-bold text-[10px]">
@@ -218,7 +215,7 @@ export const AdminSupportQueue = () => {
                           variant={
                             tkt.status === 'resolved' || tkt.status === 'closed'
                               ? 'resolved'
-                              : tkt.status === 'claimed' || tkt.status === 'in_progress'
+                              : tkt.status === 'in_progress' || tkt.status === 'claimed'
                               ? 'indigo'
                               : 'warning'
                           }
@@ -240,7 +237,7 @@ export const AdminSupportQueue = () => {
                           onClick={() => navigate(`/ticket/${tkt._id}`)}
                           className="h-8 text-xs text-purple-700 dark:text-purple-300"
                         >
-                          Open Case
+                          View Discussion
                         </Button>
                       </td>
                     </tr>
@@ -251,8 +248,14 @@ export const AdminSupportQueue = () => {
           </div>
         </Card>
       )}
+
+      {/* Contact Platform Support Modal */}
+      <ContactPlatformSupportModal
+        isOpen={isContactModalOpen}
+        onClose={() => setIsContactModalOpen(false)}
+      />
     </div>
   );
 };
 
-export default AdminSupportQueue;
+export default PlatformSupport;

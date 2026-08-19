@@ -54,7 +54,7 @@ export const getExceptionCounts = async (organizationId) => {
     Ticket.countDocuments({
       organizationId,
       type: 'request',
-      status: { $in: ['open', 'in_progress', 'claimed'] }
+      status: { $in: ['open', 'claimed'] }
     }),
     Asset.countDocuments({
       organizationId,
@@ -77,7 +77,7 @@ export const getPendingApprovals = async (organizationId) => {
     Ticket.find({
       organizationId,
       type: 'request',
-      status: { $in: ['open', 'in_progress', 'claimed'] }
+      status: { $in: ['open', 'claimed'] }
     })
       .populate('raisedBy', 'email')
       .populate('assetId', 'name assetCode purchasePrice')
@@ -144,7 +144,7 @@ export const getStats = async (organizationId) => {
     Ticket.countDocuments({
       organizationId,
       type: 'request',
-      status: { $in: ['open', 'in_progress', 'claimed'] }
+      status: { $in: ['open', 'claimed'] }
     }),
     Ticket.countDocuments({
       organizationId,

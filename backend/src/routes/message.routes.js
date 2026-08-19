@@ -12,7 +12,7 @@ const router = Router({ mergeParams: true });
 
 router.use(authenticate);
 
-router.post('/', requireRole(['employee', 'asset_manager', 'org_admin']), validate(addMessageSchema), createMessage);
+router.post('/', requireRole(['employee', 'asset_manager', 'org_admin', 'super_admin']), validate(addMessageSchema), createMessage);
 router.get('/', getMessages);
 
 export default router;

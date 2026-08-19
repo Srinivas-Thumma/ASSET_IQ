@@ -39,6 +39,7 @@ const Vendors = lazy(() => import('../pages/admin/Vendors.jsx'));
 const Employees = lazy(() => import('../pages/admin/Employees.jsx'));
 const Reports = lazy(() => import('../pages/admin/Reports.jsx'));
 const Settings = lazy(() => import('../pages/admin/Settings.jsx'));
+const PlatformSupport = lazy(() => import('../pages/admin/PlatformSupport.jsx'));
 
 // Super Admin Pages
 const SuperAdminDashboard = lazy(() => import('../pages/superadmin/SuperAdminDashboard.jsx'));
@@ -152,6 +153,7 @@ export const AppRouter = () => {
             <Route path="/vendors" element={<Vendors />} />
             <Route path="/employees" element={<Employees />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/platform-support" element={<PlatformSupport />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
         </Route>

@@ -37,21 +37,21 @@ router.get('/:id', getTicketById);
 
 router.patch(
   '/:id/claim',
-  requireRole(['asset_manager', 'org_admin']),
+  requireRole(['asset_manager', 'org_admin', 'super_admin']),
   validate(claimTicketSchema),
   claimTicket
 );
 
 router.patch(
   '/:id/resolve',
-  requireRole(['asset_manager', 'org_admin']),
+  requireRole(['asset_manager', 'org_admin', 'super_admin']),
   validate(resolveTicketSchema),
   resolveTicket
 );
 
 router.patch(
   '/:id/status',
-  requireRole(['asset_manager', 'org_admin']),
+  requireRole(['asset_manager', 'org_admin', 'super_admin']),
   validate(updateTicketStatusSchema),
   updateTicketStatus
 );
