@@ -66,8 +66,8 @@ export const adminApi = {
     return response.data?.data || response.data;
   },
 
-  getAnalytics: async () => {
-    const response = await api.get('/admin/analytics');
+  getAnalytics: async (params = {}) => {
+    const response = await api.get('/admin/analytics', { params });
     return response.data?.data || response.data;
   },
 

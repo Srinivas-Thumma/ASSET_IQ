@@ -68,7 +68,7 @@ export const deletePlan = asyncHandler(async (req, res) => {
 });
 
 export const getSuperAdminAnalytics = asyncHandler(async (req, res) => {
-  const analytics = await adminService.getSuperAdminAnalytics();
+  const analytics = await adminService.getSuperAdminAnalytics(req.query);
   res.status(200).json(new ApiResponse(200, analytics, 'Analytics retrieved successfully'));
 });
 
