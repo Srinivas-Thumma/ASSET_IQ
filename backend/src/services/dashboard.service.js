@@ -3,6 +3,10 @@ import Asset from '../models/Asset.js';
 import User from '../models/User.js';
 import Department from '../models/Department.js';
 import Assignment from '../models/Assignment.js';
+import Employee from '../models/Employee.js';
+import Category from '../models/Category.js';
+import Location from '../models/Location.js';
+import Vendor from '../models/Vendor.js';
 
 export const getExceptionQueue = async (organizationId) => {
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -188,12 +192,17 @@ export const getStats = async (organizationId) => {
     topDepartment = assetsByDepartment.reduce((prev, curr) => (curr.count > prev.count ? curr : prev), assetsByDepartment[0]);
   }
 
+  const overdueCount = escalatedTickets + slaBreaches;
+
   return {
     // 4 Decision Cards
     pendingProcurement,
+    pendingRetirement: repairAssets,
     pendingRetirements: repairAssets,
     escalatedTickets,
     slaBreaches,
+    overdueTickets: overdueCount,
+    unassignedStock: stockAssets,
 
     // Fleet Totals
     totalAssets,
