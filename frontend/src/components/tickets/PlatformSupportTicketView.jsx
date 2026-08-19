@@ -71,14 +71,20 @@ export const PlatformSupportTicketView = () => {
 
   // 4. Mutations
   const sendMutation = useMutation({
-    mutationFn: (msgText) => ticketApi.sendMessage(id, { message: msgText }),
-    onSuccess: () => {
+    mutationFn: (msgText) => ticketApi.sendMessage(id, msgText),
+    onSuccess: (savedMsg) => {
       setMessageInput('');
+      queryClient.setQueryData(['messages', id], (old = []) => {
+        if (!savedMsg) return old;
+        const msgItem = savedMsg.data || savedMsg;
+        if (old.some((m) => String(m._id) === String(msgItem._id))) return old;
+        return [...old, msgItem];
+      });
       queryClient.invalidateQueries({ queryKey: ['messages', id] });
       queryClient.invalidateQueries({ queryKey: ['ticket', id] });
     },
     onError: (err) => {
-      toast.error(err.response?.data?.message || 'Failed to send message');
+      toast.error(err.response?.data?.message || err.message || 'Failed to send message');
     },
     onSettled: () => setIsSending(false)
   });
@@ -86,7 +92,8 @@ export const PlatformSupportTicketView = () => {
   const updateStatusMutation = useMutation({
     mutationFn: ({ status, priority, resolutionNotes }) =>
       ticketApi.updateTicketStatus(id, { status, priority, resolutionNotes }),
-    onSuccess: (updated) => {
+    onSuccess: (res) => {
+      const updated = res?.data || res || {};
       const statusLabel =
         updated.status === 'in_progress'
           ? 'Case marked as In Progress'
@@ -99,7 +106,7 @@ export const PlatformSupportTicketView = () => {
       queryClient.invalidateQueries({ queryKey: ['platform-support-tickets'] });
       queryClient.invalidateQueries({ queryKey: ['messages', id] });
     },
-    onError: (err) => toast.error(err.response?.data?.message || 'Failed to update case')
+    onError: (err) => toast.error(err.response?.data?.message || err.message || 'Failed to update case')
   });
 
   const resolveMutation = useMutation({
