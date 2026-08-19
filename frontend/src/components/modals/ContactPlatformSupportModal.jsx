@@ -13,7 +13,7 @@ export const ContactPlatformSupportModal = ({ isOpen, onClose }) => {
   const queryClient = useQueryClient();
 
   const [category, setCategory] = useState('billing');
-  const [priority, setPriority] = useState('p2');
+  const [priority, setPriority] = useState('p3');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,7 +39,7 @@ export const ContactPlatformSupportModal = ({ isOpen, onClose }) => {
 
   const resetForm = () => {
     setCategory('billing');
-    setPriority('p2');
+    setPriority('p3');
     setTitle('');
     setDescription('');
   };
@@ -79,28 +79,28 @@ export const ContactPlatformSupportModal = ({ isOpen, onClose }) => {
             onChange={(e) => setCategory(e.target.value)}
             className="w-full text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-600"
           >
-            <option value="billing">Subscription, Billing & Invoices</option>
-            <option value="plan_upgrade">Plan Upgrade / Quota Limit Increase</option>
-            <option value="policy">Organization Configuration & Access</option>
-            <option value="technical">Platform Technical Bug / Issue</option>
-            <option value="other">Feature Request & General Inquiry</option>
+            <option value="billing">Billing & Subscriptions</option>
+            <option value="plan_upgrade">Plan & Quotas</option>
+            <option value="policy">Configuration & Access</option>
+            <option value="technical">Technical Issues</option>
+            <option value="other">General / Other</option>
           </select>
         </div>
 
         {/* Priority Level */}
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-            Urgency / Priority
+            Priority / Urgency
           </label>
           <select
             value={priority}
             onChange={(e) => setPriority(e.target.value)}
             className="w-full text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-600"
           >
-            <option value="p1">P1 Critical — Platform outage or major blocker</option>
-            <option value="p2">P2 High — Time-sensitive business impact</option>
-            <option value="p3">P3 Medium — Standard administrative inquiry</option>
-            <option value="p4">P4 Low — Non-urgent question or suggestion</option>
+            <option value="p1">P1 — Critical (Urgent blocker)</option>
+            <option value="p2">P2 — High (Time-sensitive)</option>
+            <option value="p3">P3 — Medium (Standard administrative request)</option>
+            <option value="p4">P4 — Low (Non-urgent question or suggestion)</option>
           </select>
         </div>
 

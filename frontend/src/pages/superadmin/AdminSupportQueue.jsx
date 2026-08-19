@@ -7,12 +7,9 @@ import {
   Building2,
   ExternalLink,
   Search,
-  Filter,
   CheckCircle2,
   AlertTriangle,
   Clock,
-  Sparkles,
-  ShieldCheck,
   Tag
 } from 'lucide-react';
 import ticketApi from '../../api/ticket.api.js';
@@ -44,12 +41,20 @@ export const AdminSupportQueue = () => {
     { key: 'other', label: 'General / Other' }
   ];
 
+  const categoryLabels = {
+    billing: 'Billing & Subscriptions',
+    plan_upgrade: 'Plan & Quotas',
+    policy: 'Configuration & Access',
+    technical: 'Technical Issues',
+    other: 'General / Other'
+  };
+
   const filteredTickets = useMemo(() => {
     return (Array.isArray(tickets) ? tickets : []).filter((t) => {
       // 1. Status Filter
       if (activeStatusTab === 'open' && t.status !== 'open') return false;
-      if (activeStatusTab === 'in_progress' && !['claimed', 'in_progress'].includes(t.status)) return false;
-      if (activeStatusTab === 'resolved' && !['resolved', 'closed'].includes(t.status)) return false;
+      if (activeStatusTab === 'in_progress' && t.status !== 'in_progress' && t.status !== 'claimed') return false;
+      if (activeStatusTab === 'resolved' && t.status !== 'resolved' && t.status !== 'closed') return false;
 
       // 2. Category Filter
       if (activeCategory !== 'all' && t.issueType !== activeCategory) return false;
@@ -80,19 +85,19 @@ export const AdminSupportQueue = () => {
         <h1 className="text-[28px] font-bold text-slate-900 dark:text-white tracking-tight mb-1">
           Platform Support & Enterprise Requests
         </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-          Dedicated administrative queue for tenant escalations, subscription adjustments, and platform assistance raised by Organization Administrators.
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Dedicated support channel for Organization Administrators to request assistance, plan upgrades, and platform governance.
         </p>
       </div>
 
-      {/* Filter Tabs & Search */}
-      <Card className="p-4 space-y-4" hoverLift={false}>
-        {/* Top row: Status Tabs + Search */}
+      {/* Simplified Filter Bar */}
+      <Card className="p-4 space-y-3" hoverLift={false}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700/60 self-start sm:self-auto">
+          {/* Status Tabs */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700/60 self-start md:self-auto">
             {[
               { key: 'all', label: 'All Cases', count: tickets.length },
-              { key: 'open', label: 'Open / Triage', count: tickets.filter((t) => t.status === 'open').length },
+              { key: 'open', label: 'Open', count: tickets.filter((t) => t.status === 'open').length },
               { key: 'in_progress', label: 'In Progress', count: tickets.filter((t) => ['claimed', 'in_progress'].includes(t.status)).length },
               { key: 'resolved', label: 'Resolved', count: tickets.filter((t) => ['resolved', 'closed'].includes(t.status)).length }
             ].map((tab) => (
@@ -111,37 +116,33 @@ export const AdminSupportQueue = () => {
             ))}
           </div>
 
-          <div className="relative w-full md:w-72">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by subject, tenant organization..."
-              className="w-full h-9 pl-9 pr-3 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-600"
-            />
-          </div>
-        </div>
-
-        {/* Bottom row: Category Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mr-2 shrink-0">
-            Category:
-          </span>
-          {categories.map((cat) => (
-            <button
-              key={cat.key}
-              type="button"
-              onClick={() => setActiveCategory(cat.key)}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                activeCategory === cat.key
-                  ? 'bg-purple-600 text-white shadow-xs'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
+          {/* Search + Category Dropdown */}
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            {/* Category Dropdown */}
+            <select
+              value={activeCategory}
+              onChange={(e) => setActiveCategory(e.target.value)}
+              className="h-9 px-3 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-600"
             >
-              {cat.label}
-            </button>
-          ))}
+              {categories.map((cat) => (
+                <option key={cat.key} value={cat.key}>
+                  {cat.label}
+                </option>
+              ))}
+            </select>
+
+            {/* Search Input */}
+            <div className="relative flex-1 md:w-64">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search subject or organization..."
+                className="w-full h-9 pl-9 pr-3 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-600"
+              />
+            </div>
+          </div>
         </div>
       </Card>
 
@@ -155,8 +156,8 @@ export const AdminSupportQueue = () => {
       ) : filteredTickets.length === 0 ? (
         <EmptyState
           icon={LifeBuoy}
-          title="No platform support requests in queue"
-          description="There are currently no platform support tickets matching the selected filters."
+          title="No platform support requests"
+          description="There are currently no platform support cases matching the selected status or filters."
         />
       ) : (
         <Card className="p-0 overflow-hidden" hoverLift={false}>
@@ -165,13 +166,13 @@ export const AdminSupportQueue = () => {
               <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-400 text-[11px] uppercase font-bold tracking-wider border-b border-slate-100 dark:border-slate-800">
                 <tr>
                   <th className="px-5 py-3.5">Case ID</th>
-                  <th className="px-4 py-3.5">Request Subject</th>
-                  <th className="px-4 py-3.5">Tenant Organization</th>
+                  <th className="px-4 py-3.5">Subject</th>
+                  <th className="px-4 py-3.5">Organization</th>
                   <th className="px-4 py-3.5">Category</th>
                   <th className="px-4 py-3.5">Priority</th>
                   <th className="px-4 py-3.5">Status</th>
                   <th className="px-4 py-3.5">Created</th>
-                  <th className="px-5 py-3.5 text-right">Actions</th>
+                  <th className="px-5 py-3.5 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -195,8 +196,8 @@ export const AdminSupportQueue = () => {
                         {tkt.organizationName || tkt.organizationId?.name || 'Tenant Org'}
                       </td>
 
-                      <td className="px-4 py-3.5 capitalize text-slate-500">
-                        {tkt.issueType?.replace('_', ' ') || 'Support'}
+                      <td className="px-4 py-3.5 text-slate-600 dark:text-slate-400">
+                        {categoryLabels[tkt.issueType] || tkt.issueType || 'General'}
                       </td>
 
                       <td className="px-4 py-3.5 uppercase font-bold text-[10px]">
@@ -218,13 +219,17 @@ export const AdminSupportQueue = () => {
                           variant={
                             tkt.status === 'resolved' || tkt.status === 'closed'
                               ? 'resolved'
-                              : tkt.status === 'claimed' || tkt.status === 'in_progress'
+                              : tkt.status === 'in_progress' || tkt.status === 'claimed'
                               ? 'indigo'
                               : 'warning'
                           }
                           dot
                         >
-                          {tkt.status === 'in_progress' ? 'In Progress' : tkt.status === 'claimed' ? 'Assigned' : tkt.status}
+                          {tkt.status === 'resolved' || tkt.status === 'closed'
+                            ? 'Resolved'
+                            : tkt.status === 'in_progress' || tkt.status === 'claimed'
+                            ? 'In Progress'
+                            : 'Open'}
                         </Badge>
                       </td>
 

@@ -4,8 +4,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   LifeBuoy,
-  Shield,
-  ShieldCheck,
   Building2,
   Clock,
   CheckCircle2,
@@ -16,10 +14,8 @@ import {
   Layers,
   FileText,
   Tag,
-  Sparkles,
+  PlayCircle,
   HelpCircle,
-  XCircle,
-  CreditCard,
   Settings2,
   Lock,
   MessageSquare
@@ -55,14 +51,14 @@ export const PlatformSupportTicketView = () => {
   useTicketSocket(id);
 
   // 2. Fetch Platform Support Ticket Details
-  const { data: ticket, isLoading, isError, refetch } = useQuery({
+  const { data: ticket, isLoading, isError } = useQuery({
     queryKey: ['ticket', id],
     queryFn: () => (ticketApi.getTicketById ? ticketApi.getTicketById(id) : ticketApi.getTicket(id)),
     enabled: Boolean(id)
   });
 
   // 3. Fetch Discussion Messages
-  const { data: messages = [], refetch: refetchMessages } = useQuery({
+  const { data: messages = [] } = useQuery({
     queryKey: ['messages', id],
     queryFn: () => ticketApi.getMessages(id),
     enabled: Boolean(id)
@@ -87,24 +83,21 @@ export const PlatformSupportTicketView = () => {
     onSettled: () => setIsSending(false)
   });
 
-  const claimMutation = useMutation({
-    mutationFn: () => ticketApi.claimTicket(id, ticket?.priority || 'p2'),
-    onSuccess: () => {
-      toast.success('You have taken ownership of this platform support case');
-      queryClient.invalidateQueries({ queryKey: ['ticket', id] });
-      queryClient.invalidateQueries({ queryKey: ['admin-support-tickets'] });
-    },
-    onError: (err) => toast.error(err.response?.data?.message || 'Failed to claim case')
-  });
-
   const updateStatusMutation = useMutation({
     mutationFn: ({ status, priority, resolutionNotes }) =>
       ticketApi.updateTicketStatus(id, { status, priority, resolutionNotes }),
-    onSuccess: () => {
-      toast.success('Support case updated');
+    onSuccess: (updated) => {
+      const statusLabel =
+        updated.status === 'in_progress'
+          ? 'Case marked as In Progress'
+          : updated.status === 'resolved'
+          ? 'Case marked as Resolved'
+          : 'Support case updated';
+      toast.success(statusLabel);
       queryClient.invalidateQueries({ queryKey: ['ticket', id] });
       queryClient.invalidateQueries({ queryKey: ['admin-support-tickets'] });
-      queryClient.invalidateQueries({ queryKey: ['ticket-messages', id] });
+      queryClient.invalidateQueries({ queryKey: ['platform-support-tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['messages', id] });
     },
     onError: (err) => toast.error(err.response?.data?.message || 'Failed to update case')
   });
@@ -117,7 +110,8 @@ export const PlatformSupportTicketView = () => {
       setResolutionNotes('');
       queryClient.invalidateQueries({ queryKey: ['ticket', id] });
       queryClient.invalidateQueries({ queryKey: ['admin-support-tickets'] });
-      queryClient.invalidateQueries({ queryKey: ['ticket-messages', id] });
+      queryClient.invalidateQueries({ queryKey: ['platform-support-tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['messages', id] });
     },
     onError: (err) => toast.error(err.response?.data?.message || 'Failed to resolve case')
   });
@@ -183,23 +177,23 @@ export const PlatformSupportTicketView = () => {
   const orgName = ticket.organizationId?.name || ticket.organizationName || 'Tenant Organization';
   const requesterEmail = ticket.raisedBy?.email || 'Org Administrator';
   const requesterName = ticket.raisedBy?.name || requesterEmail.split('@')[0];
-  const isResolved = ticket.status === 'resolved' || ticket.status === 'closed';
+  const isResolved = ticket.status === 'resolved';
 
   const categoryLabels = {
     billing: 'Billing & Subscriptions',
-    plan_upgrade: 'Plan & Quota Upgrade',
-    policy: 'Policy & Governance',
-    technical: 'Platform Technical Issue',
-    other: 'General Admin Inquiry'
+    plan_upgrade: 'Plan & Quotas',
+    policy: 'Configuration & Access',
+    technical: 'Technical Issues',
+    other: 'General / Other'
   };
 
-  const priorityBadges = {
-    p1: { label: 'P1 Critical', bg: 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800' },
-    p2: { label: 'P2 High', bg: 'bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800' },
-    p3: { label: 'P3 Medium', bg: 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800' },
-    p4: { label: 'P4 Low', bg: 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800' }
+  const priorityLabels = {
+    p1: { label: 'P1 — Critical', bg: 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800' },
+    p2: { label: 'P2 — High', bg: 'bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800' },
+    p3: { label: 'P3 — Medium', bg: 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800' },
+    p4: { label: 'P4 — Low', bg: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700' }
   };
-  const currentPriority = priorityBadges[ticket.priority?.toLowerCase()] || priorityBadges.p3;
+  const currentPriority = priorityLabels[ticket.priority?.toLowerCase()] || priorityLabels.p3;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
@@ -209,7 +203,7 @@ export const PlatformSupportTicketView = () => {
           items={[
             ...(isSuperAdmin
               ? [
-                  { label: 'Platform Support Queue', to: '/admin/support' },
+                  { label: 'Platform Support', to: '/admin/support' },
                   { label: caseCode }
                 ]
               : [
@@ -230,7 +224,7 @@ export const PlatformSupportTicketView = () => {
         </Button>
       </div>
 
-      {/* 2. Platform Support Case Banner */}
+      {/* 2. Platform Support Case Header Banner */}
       <div className="p-6 rounded-2xl bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white shadow-md border border-purple-800/40">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-2">
@@ -241,17 +235,21 @@ export const PlatformSupportTicketView = () => {
               <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold border ${currentPriority.bg}`}>
                 {currentPriority.label}
               </span>
-              <Badge
-                variant={
-                  isResolved
-                    ? 'resolved'
-                    : ticket.status === 'in_progress' || ticket.status === 'claimed'
-                    ? 'indigo'
-                    : 'warning'
-                }
+              <span
+                className={`px-2.5 py-0.5 rounded-md text-xs font-bold border ${
+                  ticket.status === 'resolved'
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30'
+                    : ticket.status === 'in_progress'
+                    ? 'bg-blue-500/20 text-blue-300 border-blue-400/30'
+                    : 'bg-amber-500/20 text-amber-300 border-amber-400/30'
+                }`}
               >
-                {ticket.status === 'in_progress' ? 'In Progress' : ticket.status === 'claimed' ? 'Assigned' : ticket.status}
-              </Badge>
+                {ticket.status === 'resolved'
+                  ? 'Resolved'
+                  : ticket.status === 'in_progress'
+                  ? 'In Progress — Being Worked On'
+                  : 'Open — Awaiting Attention'}
+              </span>
             </div>
 
             <h1 className="text-2xl font-bold tracking-tight text-white">
@@ -267,27 +265,39 @@ export const PlatformSupportTicketView = () => {
             </p>
           </div>
 
-          {/* Quick Resolution indicator */}
-          <div className="flex items-center gap-3">
-            {isSuperAdmin && !isResolved && (
-              <Button
-                variant="primary"
-                icon={CheckCircle2}
-                onClick={() => setResolveModalOpen(true)}
-                className="text-xs bg-emerald-600 hover:bg-emerald-700 border-emerald-500 shadow-md"
-              >
-                Resolve Request
-              </Button>
-            )}
-          </div>
+          {/* Quick Action in Header (SuperAdmin Only) */}
+          {isSuperAdmin && !isResolved && (
+            <div className="flex items-center gap-3">
+              {ticket.status === 'open' ? (
+                <Button
+                  variant="primary"
+                  icon={PlayCircle}
+                  loading={updateStatusMutation.isPending}
+                  onClick={() => updateStatusMutation.mutate({ status: 'in_progress' })}
+                  className="text-xs bg-indigo-600 hover:bg-indigo-700 border-indigo-500 shadow-md"
+                >
+                  Mark In Progress
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  icon={CheckCircle2}
+                  onClick={() => setResolveModalOpen(true)}
+                  className="text-xs bg-emerald-600 hover:bg-emerald-700 border-emerald-500 shadow-md"
+                >
+                  Resolve Case
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* 3. Main Two-Column Layout */}
+      {/* 3. Main Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column (8 cols): Formal Case Conversation */}
+        {/* Left Column (8 cols): Case Statement & Discussion */}
         <div className="lg:col-span-8 space-y-6">
-          {/* Initial Case Statement */}
+          {/* Initial Statement */}
           <Card className="p-5 border-l-4 border-l-purple-600 space-y-3" hoverLift={false}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -317,11 +327,11 @@ export const PlatformSupportTicketView = () => {
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-4 h-4 text-purple-600" />
                 <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                  Platform Case Discussion History ({messages.length})
+                  Case Discussion History ({messages.length})
                 </h3>
               </div>
               <span className="text-[11px] text-slate-400">
-                Audited & Timestamped Communication
+                Audited Platform Communication
               </span>
             </div>
 
@@ -383,8 +393,8 @@ export const PlatformSupportTicketView = () => {
             {/* Message Composer */}
             <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
               {isResolved ? (
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-center text-xs text-slate-500">
-                  This platform support case has been resolved and closed.
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-center text-xs text-slate-500 font-medium">
+                  This platform support case has been resolved and is closed.
                 </div>
               ) : (
                 <form onSubmit={handleSendMessage} className="flex gap-2">
@@ -416,133 +426,174 @@ export const PlatformSupportTicketView = () => {
           </Card>
         </div>
 
-        {/* Right Column (4 cols): Case Overview & Governance Controls */}
+        {/* Right Column (4 cols): Case Status & Case Information */}
         <div className="lg:col-span-4 space-y-6">
-          {/* Support Owner Card */}
+          {/* 1. Case Status Card */}
           <Card className="p-5 space-y-4" hoverLift={false}>
             <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-purple-600" /> Support Ownership
+              <Settings2 className="w-4 h-4 text-purple-600" /> Case Status
             </h3>
 
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
+            {/* Current Status Display */}
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">
-                  Assigned Platform Owner
+                <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
+                  Workflow Status
                 </span>
                 <span className="text-xs font-bold text-slate-900 dark:text-white">
-                  {ticket.handler?.email || (ticket.status === 'open' ? 'Unassigned / Platform Pool' : 'AssetOwl SuperAdmin')}
+                  {ticket.status === 'resolved'
+                    ? 'Resolved'
+                    : ticket.status === 'in_progress'
+                    ? 'In Progress — Being Worked On'
+                    : 'Open — Awaiting Attention'}
                 </span>
               </div>
-              <Badge variant={ticket.handler ? 'emerald' : 'warning'}>
-                {ticket.handler ? 'Assigned' : 'Open Pool'}
+              <Badge
+                variant={
+                  ticket.status === 'resolved'
+                    ? 'resolved'
+                    : ticket.status === 'in_progress'
+                    ? 'indigo'
+                    : 'warning'
+                }
+                dot
+              >
+                {ticket.status === 'resolved'
+                  ? 'Resolved'
+                  : ticket.status === 'in_progress'
+                  ? 'In Progress'
+                  : 'Open'}
               </Badge>
             </div>
 
-            {/* Take ownership button for SuperAdmin */}
-            {isSuperAdmin && !ticket.handler && !isResolved && (
-              <Button
-                variant="outline"
-                size="sm"
-                icon={User}
-                loading={claimMutation.isPending}
-                onClick={() => claimMutation.mutate()}
-                className="w-full text-xs"
-              >
-                Take Case Ownership
-              </Button>
+            {/* Status Action Buttons for SuperAdmin */}
+            {isSuperAdmin && !isResolved && (
+              <div className="pt-1 space-y-2">
+                {ticket.status === 'open' && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={PlayCircle}
+                    loading={updateStatusMutation.isPending}
+                    onClick={() => updateStatusMutation.mutate({ status: 'in_progress' })}
+                    className="w-full text-xs bg-indigo-600 hover:bg-indigo-700 border-indigo-500"
+                  >
+                    Mark In Progress
+                  </Button>
+                )}
+
+                {ticket.status === 'in_progress' && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={CheckCircle2}
+                    onClick={() => setResolveModalOpen(true)}
+                    className="w-full text-xs bg-emerald-600 hover:bg-emerald-700 border-emerald-500"
+                  >
+                    Resolve Case
+                  </Button>
+                )}
+              </div>
             )}
-          </Card>
 
-          {/* Platform Management Actions (SuperAdmin Only) */}
-          {isSuperAdmin && !isResolved && (
-            <Card className="p-5 space-y-4" hoverLift={false}>
-              <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                <Settings2 className="w-4 h-4 text-purple-600" /> Platform Governance
-              </h3>
-
-              {/* Change Priority */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                  Case Priority
-                </label>
+            {/* Priority Selector / Display */}
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
+                Priority / Urgency
+              </label>
+              {isSuperAdmin && !isResolved ? (
                 <select
                   value={ticket.priority || 'p3'}
                   onChange={(e) => updateStatusMutation.mutate({ priority: e.target.value })}
-                  className="w-full text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-800 dark:text-slate-200"
+                  className="w-full text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-600"
                 >
-                  <option value="p1">P1 Critical — Immediate SLA</option>
-                  <option value="p2">P2 High — Accelerated SLA</option>
-                  <option value="p3">P3 Medium — Standard SLA</option>
-                  <option value="p4">P4 Low — General Inquiry</option>
+                  <option value="p1">P1 — Critical (Urgent blocker)</option>
+                  <option value="p2">P2 — High (Time-sensitive)</option>
+                  <option value="p3">P3 — Medium (Standard SLA)</option>
+                  <option value="p4">P4 — Low (Non-urgent)</option>
                 </select>
-              </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className={`px-2.5 py-1 rounded-md text-xs font-bold border ${currentPriority.bg}`}>
+                    {currentPriority.label}
+                  </span>
+                </div>
+              )}
+            </div>
+          </Card>
 
-              {/* Change Status */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                  Workflow Status
-                </label>
-                <select
-                  value={ticket.status}
-                  onChange={(e) => updateStatusMutation.mutate({ status: e.target.value })}
-                  className="w-full text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-800 dark:text-slate-200"
-                >
-                  <option value="open">Open (Awaiting Triage)</option>
-                  <option value="claimed">Claimed (Owner Assigned)</option>
-                  <option value="in_progress">In Progress (Under Investigation)</option>
-                  <option value="resolved">Resolved (Complete)</option>
-                  <option value="closed">Closed</option>
-                </select>
-              </div>
-            </Card>
-          )}
-
-          {/* Case Metadata Card */}
+          {/* 2. Case Information Card */}
           <Card className="p-5 space-y-3" hoverLift={false}>
             <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-              <Tag className="w-4 h-4 text-purple-600" /> Case Details
+              <Tag className="w-4 h-4 text-purple-600" /> Case Information
             </h3>
 
             <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-              <div className="py-2 flex justify-between">
+              <div className="py-2.5 flex justify-between">
+                <span className="text-slate-400">Organization</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                  {orgName}
+                </span>
+              </div>
+              <div className="py-2.5 flex justify-between">
+                <span className="text-slate-400">Requester</span>
+                <div className="text-right">
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 block">
+                    {requesterName}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {requesterEmail}
+                  </span>
+                </div>
+              </div>
+              <div className="py-2.5 flex justify-between">
                 <span className="text-slate-400">Category</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-200">
                   {categoryLabels[ticket.issueType] || ticket.issueType}
                 </span>
               </div>
-              <div className="py-2 flex justify-between">
-                <span className="text-slate-400">Tenant</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">
-                  {orgName}
-                </span>
-              </div>
-              <div className="py-2 flex justify-between">
+              <div className="py-2.5 flex justify-between">
                 <span className="text-slate-400">Created</span>
                 <span className="font-mono text-slate-600 dark:text-slate-300">
                   {formatDate(ticket.createdAt)}
                 </span>
               </div>
-              {ticket.resolvedAt && (
-                <div className="py-2 flex justify-between">
-                  <span className="text-slate-400">Resolved Date</span>
-                  <span className="font-mono text-emerald-600 font-bold">
-                    {formatDate(ticket.resolvedAt)}
+              <div className="py-2.5 flex justify-between">
+                <span className="text-slate-400">Last Updated</span>
+                <span className="font-mono text-slate-600 dark:text-slate-300">
+                  {formatDate(ticket.updatedAt || ticket.createdAt)}
+                </span>
+              </div>
+            </div>
+          </Card>
+
+          {/* 3. Resolution Summary Card (Only shown when resolved) */}
+          {isResolved && (
+            <Card className="p-5 space-y-3 border-l-4 border-l-emerald-600" hoverLift={false}>
+              <h3 className="text-xs font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Resolution Summary
+              </h3>
+
+              <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs text-emerald-900 dark:text-emerald-100 leading-relaxed whitespace-pre-wrap">
+                {ticket.resolutionNotes || 'Case resolved by AssetOwl Platform Administration.'}
+              </div>
+
+              <div className="pt-2 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
+                <div className="flex justify-between">
+                  <span>Resolved Date:</span>
+                  <span className="font-mono font-semibold text-emerald-600">
+                    {formatDate(ticket.resolvedAt || ticket.updatedAt)}
                   </span>
                 </div>
-              )}
-            </div>
-
-            {ticket.resolutionNotes && (
-              <div className="pt-2">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
-                  Resolution Summary
-                </span>
-                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs text-emerald-800 dark:text-emerald-200">
-                  {ticket.resolutionNotes}
+                <div className="flex justify-between">
+                  <span>Resolved By:</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">
+                    AssetOwl Platform Administration
+                  </span>
                 </div>
               </div>
-            )}
-          </Card>
+            </Card>
+          )}
         </div>
       </div>
 

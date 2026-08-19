@@ -37,7 +37,7 @@ const stopTestServer = () => {
 
 async function testPlatformSupportWorkflow() {
   console.log('\n======================================================');
-  console.log('🚀 PLATFORM SUPPORT WORKFLOW & RBAC VERIFICATION SUITE');
+  console.log('🚀 REFACTORED PLATFORM SUPPORT WORKFLOW (OPEN -> IN_PROGRESS -> RESOLVED)');
   console.log('======================================================\n');
 
   await connectDB();
@@ -85,7 +85,6 @@ async function testPlatformSupportWorkflow() {
       body: JSON.stringify({
         type: 'admin_support',
         issueType: 'billing',
-        priority: 'p2',
         title: 'Need to add 15 additional employee seats for Q3 expansion',
         description: 'We are expanding our engineering department and need our subscription quota increased.'
       })
@@ -94,6 +93,8 @@ async function testPlatformSupportWorkflow() {
     assert(resCreate.status === 201, 'POST /api/tickets returns 201 Created for admin_support');
     const supportTicketId = dataCreate.data?._id;
     assert(supportTicketId !== undefined, `Platform support ticket created with ID: ${supportTicketId}`);
+    assert(dataCreate.data?.status === 'open', 'New platform support request starts in OPEN status');
+    assert(dataCreate.data?.priority === 'p3', 'New platform support request defaults to priority P3');
 
     // Check SuperAdmin received notification
     const saNotif = await Notification.findOne({
@@ -103,8 +104,8 @@ async function testPlatformSupportWorkflow() {
     });
     assert(saNotif !== null, 'SuperAdmin received "admin_support_created" in-app notification');
 
-    // --- PHASE 2: SUPERADMIN CROSS-TENANT READ & OWNERSHIP ---
-    console.log('\n--- 2. SuperAdmin Views and Claims Support Case ---');
+    // --- PHASE 2: SUPERADMIN CROSS-TENANT READ & MARK IN_PROGRESS ---
+    console.log('\n--- 2. SuperAdmin Views and Marks Case In Progress ---');
     const resGetSA = await fetch(`${serverUrl}/api/tickets/${supportTicketId}`, {
       headers: { Authorization: `Bearer ${superAdminToken}` }
     });
@@ -112,18 +113,23 @@ async function testPlatformSupportWorkflow() {
     assert(resGetSA.status === 200, 'SuperAdmin can read platform support ticket cross-tenant');
     assert(dataGetSA.data?.type === 'admin_support', 'Ticket type is admin_support');
 
-    // SuperAdmin takes ownership
-    const resClaim = await fetch(`${serverUrl}/api/tickets/${supportTicketId}/claim`, {
+    // SuperAdmin transitions case from OPEN to IN_PROGRESS directly (no claim operation)
+    const resInProgress = await fetch(`${serverUrl}/api/tickets/${supportTicketId}/status`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${superAdminToken}`
       },
-      body: JSON.stringify({ priority: 'p2' })
+      body: JSON.stringify({ status: 'in_progress', priority: 'p2' })
     });
-    const dataClaim = await resClaim.json();
-    assert(resClaim.status === 200, 'SuperAdmin can take ownership / claim platform support case');
-    assert(dataClaim.data?.status === 'claimed', 'Support case status set to claimed');
+    const dataInProgress = await resInProgress.json();
+    assert(resInProgress.status === 200, 'SuperAdmin can mark platform support case as IN_PROGRESS');
+    assert(dataInProgress.data?.status === 'in_progress', 'Support case status set to in_progress');
+    assert(dataInProgress.data?.priority === 'p2', 'Priority updated to p2');
+
+    // Verify handler is auto-populated for auditing
+    const updatedTkt = await Ticket.findById(supportTicketId);
+    assert(updatedTkt.handler && String(updatedTkt.handler) === String(superAdmin._id), 'SuperAdmin handler auto-assigned in background without claim step');
 
     // --- PHASE 3: BIDIRECTIONAL FORMAL CONVERSATION ---
     console.log('\n--- 3. Bidirectional Support Discussion ---');
@@ -170,10 +176,10 @@ async function testPlatformSupportWorkflow() {
     });
     const dataGetMsgs = await resGetMsgs.json();
     assert(resGetMsgs.status === 200, 'GET /api/tickets/:id/messages returns 200 OK');
-    assert(Array.isArray(dataGetMsgs.data) && dataGetMsgs.data.length >= 3, `Discussion history contains ${dataGetMsgs.data?.length} messages (including system notices)`);
+    assert(Array.isArray(dataGetMsgs.data) && dataGetMsgs.data.length >= 3, `Discussion history contains ${dataGetMsgs.data?.length} messages`);
 
     // --- PHASE 4: SUPERADMIN RESOLVES CASE ---
-    console.log('\n--- 4. SuperAdmin Updates and Resolves Support Case ---');
+    console.log('\n--- 4. SuperAdmin Resolves Support Case ---');
     const resResolve = await fetch(`${serverUrl}/api/tickets/${supportTicketId}/resolve`, {
       method: 'PATCH',
       headers: {

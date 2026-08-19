@@ -22,8 +22,11 @@ export const createTicket = async (data, user) => {
 
   const org = await Organization.findById(user.organizationId).lean();
 
+  const priority = data.type === 'admin_support' ? (data.priority || 'p3') : data.priority;
+
   const ticket = await Ticket.create({
     ...data,
+    priority,
     raisedBy: user._id,
     status: 'open',
     organizationId: user.organizationId,
@@ -411,6 +414,12 @@ export const updateTicketStatus = async (ticketId, data, user) => {
   const { status, resolutionNotes, priority, assetStateChange } = data || {};
   const previousStatus = ticket.status;
 
+  if (ticket.type === 'admin_support') {
+    if (status && !['open', 'in_progress', 'resolved'].includes(status)) {
+      throw new ApiError(400, 'Invalid status for Platform Support. Allowed statuses: open, in_progress, resolved');
+    }
+  }
+
   if (status) {
     ticket.status = status;
   }
@@ -425,7 +434,7 @@ export const updateTicketStatus = async (ticketId, data, user) => {
     ticket.resolvedAt = new Date();
     ticket.resolvedBy = user._id;
   }
-  if (!ticket.handler && ['claimed', 'in_progress'].includes(status)) {
+  if (!ticket.handler && ['claimed', 'in_progress', 'resolved'].includes(status)) {
     ticket.handler = user._id;
   }
 

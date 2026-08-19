@@ -6,12 +6,9 @@ import {
   Plus,
   MessageSquare,
   Search,
-  Filter,
   CheckCircle2,
   Clock,
-  ShieldCheck,
-  Tag,
-  ExternalLink
+  Tag
 } from 'lucide-react';
 import ticketApi from '../../api/ticket.api.js';
 import Card from '../../components/ui/Card.jsx';
@@ -25,7 +22,8 @@ import { formatDate, formatRelative } from '../../utils/formatters.js';
 
 export const PlatformSupport = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('active'); // 'all' | 'active' | 'resolved'
+  const [activeStatusTab, setActiveStatusTab] = useState('all'); // 'all' | 'open' | 'in_progress' | 'resolved'
+  const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
 
@@ -34,21 +32,35 @@ export const PlatformSupport = () => {
     queryFn: () => ticketApi.getTickets({ type: 'admin_support' })
   });
 
+  const categories = [
+    { key: 'all', label: 'All Categories' },
+    { key: 'billing', label: 'Billing & Subscriptions' },
+    { key: 'plan_upgrade', label: 'Plan & Quotas' },
+    { key: 'policy', label: 'Configuration & Access' },
+    { key: 'technical', label: 'Technical Issues' },
+    { key: 'other', label: 'General / Other' }
+  ];
+
   const categoryLabels = {
     billing: 'Billing & Subscriptions',
     plan_upgrade: 'Plan & Quotas',
     policy: 'Configuration & Access',
-    technical: 'Technical Bug',
-    other: 'General Inquiry'
+    technical: 'Technical Issues',
+    other: 'General / Other'
   };
 
   const filteredTickets = useMemo(() => {
     return (Array.isArray(tickets) ? tickets : []).filter((t) => {
-      const isResolved = t.status === 'resolved' || t.status === 'closed';
-      if (activeTab === 'active' && isResolved) return false;
-      if (activeTab === 'resolved' && !isResolved) return false;
+      // 1. Status Filter
+      if (activeStatusTab === 'open' && t.status !== 'open') return false;
+      if (activeStatusTab === 'in_progress' && t.status !== 'in_progress' && t.status !== 'claimed') return false;
+      if (activeStatusTab === 'resolved' && t.status !== 'resolved' && t.status !== 'closed') return false;
 
-      const q = searchQuery.toLowerCase();
+      // 2. Category Filter
+      if (activeCategory !== 'all' && t.issueType !== activeCategory) return false;
+
+      // 3. Search Query
+      const q = searchQuery.toLowerCase().trim();
       if (!q) return true;
       return (
         t.title?.toLowerCase().includes(q) ||
@@ -56,7 +68,7 @@ export const PlatformSupport = () => {
         t._id?.toLowerCase().includes(q)
       );
     });
-  }, [tickets, activeTab, searchQuery]);
+  }, [tickets, activeStatusTab, activeCategory, searchQuery]);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
@@ -74,7 +86,7 @@ export const PlatformSupport = () => {
             Platform Support & Escalations
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Direct, audited communication channel between your organization and AssetOwl Platform Administration.
+            Formal communication channel with AssetOwl Platform Administration for account, billing, and system assistance.
           </p>
         </div>
 
@@ -90,52 +102,54 @@ export const PlatformSupport = () => {
 
       {/* Filter Tabs & Search */}
       <Card className="p-4 space-y-3" hoverLift={false}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700/60 self-start sm:self-auto">
-            <button
-              type="button"
-              onClick={() => setActiveTab('active')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                activeTab === 'active'
-                  ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-xs'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              Active Cases
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('resolved')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                activeTab === 'resolved'
-                  ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-xs'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              Resolved History
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                activeTab === 'all'
-                  ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-xs'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              All Requests ({tickets.length})
-            </button>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          {/* Status Tabs */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700/60 self-start md:self-auto">
+            {[
+              { key: 'all', label: 'All Requests', count: tickets.length },
+              { key: 'open', label: 'Open', count: tickets.filter((t) => t.status === 'open').length },
+              { key: 'in_progress', label: 'In Progress', count: tickets.filter((t) => ['claimed', 'in_progress'].includes(t.status)).length },
+              { key: 'resolved', label: 'Resolved', count: tickets.filter((t) => ['resolved', 'closed'].includes(t.status)).length }
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveStatusTab(tab.key)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                  activeStatusTab === tab.key
+                    ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-xs'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                {tab.label} ({tab.count})
+              </button>
+            ))}
           </div>
 
-          <div className="relative w-full sm:w-72">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by case title or keywords..."
-              className="w-full h-9 pl-9 pr-3 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-600"
-            />
+          {/* Search + Category Dropdown */}
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <select
+              value={activeCategory}
+              onChange={(e) => setActiveCategory(e.target.value)}
+              className="h-9 px-3 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-600"
+            >
+              {categories.map((cat) => (
+                <option key={cat.key} value={cat.key}>
+                  {cat.label}
+                </option>
+              ))}
+            </select>
+
+            <div className="relative flex-1 sm:w-64">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by subject or keywords..."
+                className="w-full h-9 pl-9 pr-3 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-600"
+              />
+            </div>
           </div>
         </div>
       </Card>
@@ -150,16 +164,8 @@ export const PlatformSupport = () => {
       ) : filteredTickets.length === 0 ? (
         <EmptyState
           icon={LifeBuoy}
-          title={
-            activeTab === 'active'
-              ? 'No active platform support cases'
-              : 'No support requests found'
-          }
-          description={
-            activeTab === 'active'
-              ? 'Your organization has no open cases with AssetOwl Platform Administration.'
-              : 'No platform support requests matched the selected filter.'
-          }
+          title="No platform support cases"
+          description="Your organization has no support requests matching the selected filters."
         />
       ) : (
         <Card className="p-0 overflow-hidden" hoverLift={false}>
@@ -173,7 +179,7 @@ export const PlatformSupport = () => {
                   <th className="px-4 py-3.5">Priority</th>
                   <th className="px-4 py-3.5">Status</th>
                   <th className="px-4 py-3.5">Created</th>
-                  <th className="px-5 py-3.5 text-right">Discussion</th>
+                  <th className="px-5 py-3.5 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -192,7 +198,7 @@ export const PlatformSupport = () => {
                         {tkt.title}
                       </td>
 
-                      <td className="px-4 py-3.5 text-slate-600 dark:text-slate-300">
+                      <td className="px-4 py-3.5 text-slate-600 dark:text-slate-400">
                         {categoryLabels[tkt.issueType] || tkt.issueType || 'General'}
                       </td>
 
@@ -221,7 +227,11 @@ export const PlatformSupport = () => {
                           }
                           dot
                         >
-                          {tkt.status === 'in_progress' ? 'In Progress' : tkt.status === 'claimed' ? 'Assigned' : tkt.status}
+                          {tkt.status === 'resolved' || tkt.status === 'closed'
+                            ? 'Resolved'
+                            : tkt.status === 'in_progress' || tkt.status === 'claimed'
+                            ? 'In Progress'
+                            : 'Open'}
                         </Badge>
                       </td>
 
@@ -237,7 +247,7 @@ export const PlatformSupport = () => {
                           onClick={() => navigate(`/ticket/${tkt._id}`)}
                           className="h-8 text-xs text-purple-700 dark:text-purple-300"
                         >
-                          View Discussion
+                          Open Case
                         </Button>
                       </td>
                     </tr>
