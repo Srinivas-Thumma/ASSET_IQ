@@ -210,20 +210,20 @@ export const SuperAdminAnalytics = () => {
 
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {(stats?.atRiskTenants && stats.atRiskTenants.length > 0 ? stats.atRiskTenants : [
-              { id: '1', name: 'Acme Global Logistics', slug: 'acme-corp', usedAssets: 48, maxAssets: 50, percent: 96 },
-              { id: '2', name: 'Nexus Cloud Corp', slug: 'nexus-cloud', usedAssets: 185, maxAssets: 200, percent: 92 }
-            ]).map((org) => (
-              <div key={org.id} className="py-3 flex items-center justify-between gap-3">
+              { _id: 'mock-1', name: 'Acme Global Logistics', slug: 'acme-corp', usedAssets: 48, maxAssets: 50, percent: 96 },
+              { _id: 'mock-2', name: 'Nexus Cloud Corp', slug: 'nexus-cloud', usedAssets: 185, maxAssets: 200, percent: 92 }
+            ]).map((org, idx) => (
+              <div key={org._id || org.id || org.slug || `risk-org-${idx}`} className="py-3 flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <span className="font-semibold text-sm text-slate-900 dark:text-white block truncate">
                     {org.name}
                   </span>
                   <span className="text-xs text-slate-400">
-                    {org.usedAssets} / {org.maxAssets} Assets ({org.percent}%)
+                    {org.riskReason || `${org.usedAssets || 0} / ${org.maxAssets || 100} Assets (${org.percent || Math.round(((org.usedAssets || 0) / (org.maxAssets || 100)) * 100)}%)`}
                   </span>
                 </div>
                 <div className="w-28 space-y-1">
-                  <ProgressBar value={org.usedAssets} max={org.maxAssets} colorVariant="amber" />
+                  <ProgressBar value={org.usedAssets || org.percent || 50} max={org.maxAssets || 100} colorVariant="amber" />
                 </div>
               </div>
             ))}
@@ -242,10 +242,10 @@ export const SuperAdminAnalytics = () => {
 
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {(stats?.topTenants && stats.topTenants.length > 0 ? stats.topTenants : [
-              { id: '1', name: 'Nexus Cloud Corp', mrr: '$99/mo', count: 185, tier: 'Professional' },
-              { id: '2', name: 'Acme Global Logistics', mrr: '$49/mo', count: 48, tier: 'Starter' }
+              { _id: 'mock-t1', name: 'Nexus Cloud Corp', mrr: '$99/mo', count: 185, tier: 'Professional' },
+              { _id: 'mock-t2', name: 'Acme Global Logistics', mrr: '$49/mo', count: 48, tier: 'Starter' }
             ]).map((t, i) => (
-              <div key={t.id} className="py-3 flex items-center justify-between gap-3">
+              <div key={t._id || t.id || t.slug || `top-tenant-${i}`} className="py-3 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
                   <span className="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-950 text-[#6D28D9] font-bold text-xs flex items-center justify-center">
                     #{i + 1}
@@ -254,11 +254,11 @@ export const SuperAdminAnalytics = () => {
                     <span className="font-semibold text-sm text-slate-900 dark:text-white block">
                       {t.name}
                     </span>
-                    <span className="text-xs text-slate-400">{t.tier} • {t.mrr}</span>
+                    <span className="text-xs text-slate-400">{t.tier || 'Starter Tier'} • {t.mrr || '$49/mo'}</span>
                   </div>
                 </div>
                 <span className="font-bold text-sm text-slate-900 dark:text-white">
-                  {t.count} Assets
+                  {t.count || t.assetCount || 0} Assets
                 </span>
               </div>
             ))}

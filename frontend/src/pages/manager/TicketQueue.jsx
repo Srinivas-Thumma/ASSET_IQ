@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { gsap } from 'gsap';
 import {
   Inbox,
@@ -22,6 +22,7 @@ import Button from '../../components/ui/Button.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Modal from '../../components/ui/Modal.jsx';
 import Skeleton from '../../components/ui/Skeleton.jsx';
+import { useAuthStore } from '../../stores/auth.store.js';
 import { useTickets } from '../../hooks/useTickets.js';
 import { formatDate, formatRelative } from '../../utils/formatters.js';
 
@@ -82,6 +83,12 @@ export const getSLAInfo = (ticket) => {
 
 export const TicketQueue = () => {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+
+  if (user?.role === 'super_admin') {
+    return <Navigate to="/admin/support" replace />;
+  }
+
   const { tickets, isLoading, claimTicket } = useTickets();
 
   const [selectedTicketForClaim, setSelectedTicketForClaim] = useState(null);

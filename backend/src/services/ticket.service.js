@@ -16,15 +16,21 @@ const populateEmployee = {
 };
 
 export const createTicket = async (data, user) => {
+  if (user?.role === 'super_admin') {
+    throw new ApiError(403, 'SuperAdmin access is read-only. Creating operational tickets is not permitted.');
+  }
+
+  const org = await Organization.findById(user.organizationId).lean();
+
   const ticket = await Ticket.create({
     ...data,
     raisedBy: user._id,
     status: 'open',
-    organizationId: user.organizationId
+    organizationId: user.organizationId,
+    organizationName: org?.name || ''
   });
 
   // Auto-route if issueType matches org settings
-  const org = await Organization.findById(user.organizationId).lean();
   if (org?.settings?.autoRouteCategories) {
     const autoHandler = org.settings.autoRouteCategories[data.issueType];
     if (autoHandler) {
@@ -130,6 +136,7 @@ export const getTicketById = async (ticketId, organizationId, user = null) => {
     : { _id: ticketId, organizationId: (user?.organizationId || organizationId) };
 
   const ticket = await Ticket.findOne(query)
+    .populate('organizationId', 'name slug')
     .populate('assetId', 'name assetCode status')
     .populate({ path: 'raisedBy', select: 'email role employeeRef', populate: populateEmployee })
     .populate({ path: 'handler', select: 'email role employeeRef', populate: populateEmployee })
@@ -147,7 +154,8 @@ export const getTicketById = async (ticketId, organizationId, user = null) => {
   }
 
   // Fetch all ticket messages within the tenant
-  const msgQuery = { ticketId, organizationId: ticket.organizationId };
+  const orgId = ticket.organizationId?._id || ticket.organizationId;
+  const msgQuery = { ticketId, organizationId: orgId };
   if (user?.role === 'employee') {
     msgQuery.isInternal = false;
   }
@@ -159,11 +167,11 @@ export const getTicketById = async (ticketId, organizationId, user = null) => {
 };
 
 export const claimTicket = async (ticketId, priority, user) => {
-  const ticketQuery = user.role === 'super_admin'
-    ? { _id: ticketId }
-    : { _id: ticketId, organizationId: user.organizationId };
+  if (user?.role === 'super_admin') {
+    throw new ApiError(403, 'SuperAdmin access is read-only. Claiming operational tickets is not permitted.');
+  }
 
-  const ticket = await Ticket.findOne(ticketQuery);
+  const ticket = await Ticket.findOne({ _id: ticketId, organizationId: user.organizationId });
   if (!ticket) {
     throw new ApiError(404, 'Ticket not found');
   }
@@ -230,8 +238,11 @@ export const claimTicket = async (ticketId, priority, user) => {
 };
 
 export const resolveTicket = async (ticketId, data, user) => {
-  const query = user.role === 'super_admin' ? { _id: ticketId } : { _id: ticketId, organizationId: user.organizationId };
-  const ticket = await Ticket.findOne(query);
+  if (user?.role === 'super_admin') {
+    throw new ApiError(403, 'SuperAdmin access is read-only. Resolving operational tickets is not permitted.');
+  }
+
+  const ticket = await Ticket.findOne({ _id: ticketId, organizationId: user.organizationId });
   if (!ticket) throw new ApiError(404, 'Ticket not found');
 
   if (!ticket.handler) {
@@ -311,8 +322,11 @@ export const resolveTicket = async (ticketId, data, user) => {
 };
 
 export const escalateTicket = async (ticketId, user) => {
-  const query = user.role === 'super_admin' ? { _id: ticketId } : { _id: ticketId, organizationId: user.organizationId };
-  const ticket = await Ticket.findOne(query);
+  if (user?.role === 'super_admin') {
+    throw new ApiError(403, 'SuperAdmin access is read-only. Escalating operational tickets is not permitted.');
+  }
+
+  const ticket = await Ticket.findOne({ _id: ticketId, organizationId: user.organizationId });
   if (!ticket) throw new ApiError(404, 'Ticket not found');
 
   ticket.isEscalated = true;
@@ -347,8 +361,11 @@ export const escalateTicket = async (ticketId, user) => {
 };
 
 export const updateTicketStatus = async (ticketId, data, user) => {
-  const query = user.role === 'super_admin' ? { _id: ticketId } : { _id: ticketId, organizationId: user.organizationId };
-  const ticket = await Ticket.findOne(query);
+  if (user?.role === 'super_admin') {
+    throw new ApiError(403, 'SuperAdmin access is read-only. Updating ticket status is not permitted.');
+  }
+
+  const ticket = await Ticket.findOne({ _id: ticketId, organizationId: user.organizationId });
   if (!ticket) throw new ApiError(404, 'Ticket not found');
 
   const { status, resolutionNotes, priority, assetStateChange } = data || {};

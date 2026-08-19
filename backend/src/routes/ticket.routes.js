@@ -31,34 +31,34 @@ router.use('/:ticketId/messages', messageRoutes);
 router.get('/my', getTickets);
 
 // Ticket CRUD and Triage
-router.post('/', validate(createTicketSchema), createTicket);
+router.post('/', requireRole(['employee', 'asset_manager', 'org_admin']), validate(createTicketSchema), createTicket);
 router.get('/', getTickets);
 router.get('/:id', getTicketById);
 
 router.patch(
   '/:id/claim',
-  requireRole(['asset_manager', 'org_admin', 'super_admin']),
+  requireRole(['asset_manager', 'org_admin']),
   validate(claimTicketSchema),
   claimTicket
 );
 
 router.patch(
   '/:id/resolve',
-  requireRole(['asset_manager', 'org_admin', 'super_admin']),
+  requireRole(['asset_manager', 'org_admin']),
   validate(resolveTicketSchema),
   resolveTicket
 );
 
 router.patch(
   '/:id/status',
-  requireRole(['asset_manager', 'org_admin', 'super_admin']),
+  requireRole(['asset_manager', 'org_admin']),
   validate(updateTicketStatusSchema),
   updateTicketStatus
 );
 
 router.post(
   '/:id/escalate',
-  requireRole(['asset_manager', 'org_admin', 'super_admin']),
+  requireRole(['asset_manager', 'org_admin']),
   escalateTicket
 );
 

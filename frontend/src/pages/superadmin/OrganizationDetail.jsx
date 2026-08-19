@@ -495,7 +495,7 @@ export const OrganizationDetail = () => {
                           onClick={() => navigate(`/ticket/${tkt._id}`)}
                           className="text-xs text-purple-600 hover:text-purple-800 font-bold inline-flex items-center gap-1 cursor-pointer"
                         >
-                          <span>Open Chat</span>
+                          <span>Inspect Ticket</span>
                           <ExternalLink className="w-3 h-3" />
                         </button>
                       </td>

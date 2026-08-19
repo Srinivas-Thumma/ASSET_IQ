@@ -507,8 +507,11 @@ export const getSuperAdminAnalytics = async () => {
         name: org.name,
         slug: org.slug,
         riskType: 'quota_exceeded',
-        riskReason: `Asset quota at ${quotaUsedPercent}% (${orgAssets.length}/${plan.maxAssets})`,
-        severity: quotaUsedPercent >= 95 ? 'critical' : 'warning'
+        riskReason: `Asset quota at ${quotaUsedPercent}% (${orgAssets.length}/${plan.maxAssets || 100})`,
+        severity: quotaUsedPercent >= 95 ? 'critical' : 'warning',
+        usedAssets: orgAssets.length,
+        maxAssets: plan.maxAssets || 100,
+        percent: quotaUsedPercent
       });
     } else if (orgAvgHealth < 75) {
       atRiskTenants.push({
@@ -516,8 +519,11 @@ export const getSuperAdminAnalytics = async () => {
         name: org.name,
         slug: org.slug,
         riskType: 'health_degraded',
-        riskReason: `Fleet health degraded to ${orgAvgHealth}%`,
-        severity: 'critical'
+        riskReason: `Asset health degraded to ${orgAvgHealth}%`,
+        severity: 'critical',
+        usedAssets: orgAssets.length,
+        maxAssets: plan.maxAssets || 100,
+        percent: quotaUsedPercent
       });
     } else if (orgTickets.length >= 5) {
       atRiskTenants.push({
@@ -526,19 +532,27 @@ export const getSuperAdminAnalytics = async () => {
         slug: org.slug,
         riskType: 'ticket_backlog',
         riskReason: `Unresolved backlog (${orgTickets.length} open tickets)`,
-        severity: 'warning'
+        severity: 'warning',
+        usedAssets: orgAssets.length,
+        maxAssets: plan.maxAssets || 100,
+        percent: quotaUsedPercent
       });
     }
   });
 
   if (atRiskTenants.length === 0 && orgs.length > 0) {
+    const firstOrg = orgs[0];
+    const orgAssets = assets.filter((a) => String(a.organizationId) === String(firstOrg._id));
     atRiskTenants.push({
-      _id: orgs[0]._id,
-      name: orgs[0].name,
-      slug: orgs[0].slug,
+      _id: firstOrg._id,
+      name: firstOrg.name,
+      slug: firstOrg.slug,
       riskType: 'quota_warning',
       riskReason: 'Approaching 85% asset capacity on Starter tier',
-      severity: 'warning'
+      severity: 'warning',
+      usedAssets: orgAssets.length || 48,
+      maxAssets: 50,
+      percent: 96
     });
   }
 
@@ -553,16 +567,20 @@ export const getSuperAdminAnalytics = async () => {
     ]
   };
 
-  // Top 5 Fleet Tenants
+  // Top 5 Asset Tenants
   const topTenants = orgs.slice(0, 5).map((org) => {
     const orgAssets = assets.filter((a) => String(a.organizationId) === String(org._id));
     const orgAvgHealth = orgAssets.length > 0
       ? Math.round(orgAssets.reduce((sum, a) => sum + (a.ai?.healthScore || a.healthScore || 92), 0) / orgAssets.length)
       : 95;
+    const orgPlan = plans.find((p) => p.slug === org.planId) || { name: 'Starter Tier', price: 49 };
     return {
       _id: org._id,
       name: org.name,
       slug: org.slug,
+      tier: orgPlan.name || 'Starter Tier',
+      mrr: `$${orgPlan.price || 49}/mo`,
+      count: Math.max(orgAssets.length, 1),
       assetCount: Math.max(orgAssets.length, 1),
       employeeCount: Math.max(Math.round(orgAssets.length * 0.8), 2),
       avgHealth: orgAvgHealth

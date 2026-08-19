@@ -5,6 +5,10 @@ import ApiError from '../utils/ApiError.js';
 import { emitToTicket } from '../config/socket.js';
 
 export const createMessage = async (data, user) => {
+  if (user?.role === 'super_admin') {
+    throw new ApiError(403, 'SuperAdmin access is read-only. Operational message creation is not permitted.');
+  }
+
   if (user.role === 'employee' && data.isInternal) {
     throw new ApiError(403, 'You cannot post internal notes');
   }

@@ -11,6 +11,11 @@ export const ticketApi = {
     return response.data?.data || response.data;
   },
 
+  getTicket: async (id) => {
+    const response = await api.get(`/tickets/${id}`);
+    return response.data?.data || response.data;
+  },
+
   getTicketById: async (id) => {
     const response = await api.get(`/tickets/${id}`);
     return response.data?.data || response.data;

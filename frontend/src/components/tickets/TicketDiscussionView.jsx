@@ -67,7 +67,7 @@ export const TicketDiscussionView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const isManagerOrAdmin = user?.role === 'asset_manager' || user?.role === 'org_admin' || user?.role === 'super_admin';
+  const isManagerOrAdmin = user?.role === 'asset_manager' || user?.role === 'org_admin';
 
   const {
     ticket,
