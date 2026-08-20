@@ -1,21 +1,21 @@
 import React from 'react';
 import { Navigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuthStore } from '../../stores/auth.store.js';
-import Skeleton from '../ui/Skeleton.jsx';
+import LottieLoader from '../ui/LottieLoader.jsx';
 import { ROLE_DEFAULT_ROUTES } from '../../utils/constants.js';
 
 export const ProtectedRoute = ({ allowedRoles = [], children }) => {
   const { isAuthenticated, user, isLoading } = useAuthStore();
   const location = useLocation();
 
-  if (isLoading) {
+  if (isLoading && !isAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-6 space-y-4">
-        <div className="w-full max-w-md bg-white p-8 rounded-xl border border-slate-200 shadow-sm space-y-4">
-          <Skeleton variant="text" className="h-6 w-1/3 mx-auto" />
-          <Skeleton count={4} />
-        </div>
-      </div>
+      <LottieLoader
+        src="/Loading 40 _ Paperplane.lottie"
+        className="w-44 h-44"
+        message="Loading AssetOwl..."
+        fullPage
+      />
     );
   }
 

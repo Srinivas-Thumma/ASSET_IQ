@@ -33,6 +33,7 @@ import {
   useRejectRetirement
 } from '../../hooks/useDashboard.js';
 import { formatRelative } from '../../utils/formatters.js';
+import LottieLoader from '../../components/ui/LottieLoader.jsx';
 
 export const Dashboard = () => {
   const navigate = useNavigate();
@@ -76,6 +77,17 @@ export const Dashboard = () => {
     ...(stats?.assetsByDepartment?.map((d) => d.count) || [1]),
     1
   );
+
+  if (isStatsLoading) {
+    return (
+      <LottieLoader
+        src="/Loading 40 _ Paperplane.lottie"
+        className="w-44 h-44"
+        message="Loading Organization Dashboard..."
+        fullPage
+      />
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">

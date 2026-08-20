@@ -41,6 +41,7 @@ import Modal from '../../components/ui/Modal.jsx';
 import Input from '../../components/ui/Input.jsx';
 import Select from '../../components/ui/Select.jsx';
 import { formatCurrency, formatRelative, formatDate } from '../../utils/formatters.js';
+import LottieLoader from '../../components/ui/LottieLoader.jsx';
 import { toast } from 'sonner';
 
 const PLAN_COLORS = {
@@ -179,6 +180,17 @@ export const SuperAdminDashboard = () => {
     document.body.removeChild(link);
     toast.success('Platform telemetry exported to CSV');
   };
+
+  if (isAnalyticsLoading || isOrgsLoading) {
+    return (
+      <LottieLoader
+        src="/Loading 40 _ Paperplane.lottie"
+        className="w-44 h-44"
+        message="Loading SuperAdmin Platform Overview..."
+        fullPage
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

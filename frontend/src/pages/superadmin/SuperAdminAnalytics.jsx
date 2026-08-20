@@ -43,6 +43,7 @@ import SecurityAndRiskCard from '../../components/analytics/SecurityAndRiskCard.
 import OrganizationsRequiringAttention from '../../components/analytics/OrganizationsRequiringAttention.jsx';
 import PlatformActivityTimeline from '../../components/analytics/PlatformActivityTimeline.jsx';
 import { formatCurrency, formatRelative, formatDate } from '../../utils/formatters.js';
+import LottieLoader from '../../components/ui/LottieLoader.jsx';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -84,17 +85,12 @@ export const SuperAdminAnalytics = () => {
 
   if (isLoading) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto pb-16">
-        <Skeleton className="h-8 w-64 rounded-lg" />
-        <Skeleton className="h-14 w-full rounded-2xl" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-          <Skeleton className="h-28 w-full rounded-xl" count={6} />
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <Skeleton className="lg:col-span-7 h-72 w-full rounded-2xl" />
-          <Skeleton className="lg:col-span-5 h-72 w-full rounded-2xl" />
-        </div>
-      </div>
+      <LottieLoader
+        src="/Loading 40 _ Paperplane.lottie"
+        className="w-44 h-44"
+        message="Loading Platform Intelligence & Telemetry..."
+        fullPage
+      />
     );
   }
 

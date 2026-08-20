@@ -50,17 +50,20 @@ const SuperAdminAnalytics = lazy(() => import('../pages/superadmin/SuperAdminAna
 const AdminSupportQueue = lazy(() => import('../pages/superadmin/AdminSupportQueue.jsx'));
 const SuperAdminSettings = lazy(() => import('../pages/superadmin/SuperAdminSettings.jsx'));
 
+import LottieLoader from '../components/ui/LottieLoader.jsx';
 import { useAuthStore } from '../stores/auth.store.js';
 import { ROLE_DEFAULT_ROUTES, ROLES } from '../utils/constants.js';
 
 /**
- * Elegant page loading indicator for Suspense chunk resolution
+ * Lottie animation page loader for React Suspense chunk resolution
  */
 const PageLoader = () => (
-  <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 space-y-4">
-    <div className="w-8 h-8 border-3 border-purple-600 border-t-transparent rounded-full animate-spin" />
-    <p className="text-xs font-medium text-slate-400 animate-pulse">Loading View...</p>
-  </div>
+  <LottieLoader
+    src="/Loading 40 _ Paperplane.lottie"
+    className="w-44 h-44"
+    message="Loading AssetOwl..."
+    fullPage
+  />
 );
 
 export const AppRouter = () => {
