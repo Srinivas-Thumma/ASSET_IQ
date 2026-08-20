@@ -82,39 +82,6 @@ export const SuperAdminAnalytics = () => {
     queryFn: adminApi.getOrganizations
   });
 
-  const sectionChartsRef = useRef(null);
-  const sectionOperationsRef = useRef(null);
-
-  // GSAP Animations
-  useEffect(() => {
-    const targets = [sectionChartsRef.current, sectionOperationsRef.current].filter(Boolean);
-    const tweens = targets.map((el) =>
-      gsap.fromTo(
-        el,
-        { y: 15, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.4,
-          ease: 'power2.out',
-          clearProps: 'all',
-          scrollTrigger: {
-            trigger: el,
-            start: 'top 88%'
-          }
-        }
-      )
-    );
-
-    return () => {
-      tweens.forEach((t) => {
-        t.kill();
-        if (t.scrollTrigger) t.scrollTrigger.kill();
-      });
-      targets.forEach((el) => gsap.set(el, { opacity: 1, y: 0, clearProps: 'all' }));
-    };
-  }, [stats]);
-
   if (isLoading) {
     return (
       <div className="space-y-6 max-w-7xl mx-auto pb-16">
@@ -200,7 +167,7 @@ export const SuperAdminAnalytics = () => {
   const hasActiveFilters = timeRange !== '30d' || selectedOrg !== 'all' || selectedPlan !== 'all';
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
+    <div className="space-y-4 max-w-7xl mx-auto pb-16">
       <Breadcrumbs
         items={[
           { label: 'Platform Administration', to: '/admin/dashboard' },
@@ -209,9 +176,9 @@ export const SuperAdminAnalytics = () => {
       />
 
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <h1 className="text-[26px] font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
+          <h1 className="text-[24px] font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
             Global Platform Intelligence
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -240,8 +207,8 @@ export const SuperAdminAnalytics = () => {
       </div>
 
       {/* Global Filter Bar */}
-      <Card className="p-3.5" hoverLift={false}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <Card className="p-3" hoverLift={false}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-purple-600 shrink-0" />
             <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
@@ -249,7 +216,7 @@ export const SuperAdminAnalytics = () => {
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2">
             {/* Time Range */}
             <select
               value={timeRange}
@@ -309,7 +276,7 @@ export const SuperAdminAnalytics = () => {
       <PlatformHealthGaugeCard health={platformHealth} />
 
       {/* LEVEL 1: 6 Core KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
         {kpis.map((kpi, idx) => (
           <KpiCard
             key={idx}
@@ -327,7 +294,7 @@ export const SuperAdminAnalytics = () => {
       <OrganizationsRequiringAttention organizations={attentionRequired} />
 
       {/* LEVEL 2: Platform Growth & Revenue Performance */}
-      <div ref={sectionChartsRef} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         <div className="lg:col-span-7">
           <MrrTrendChart
             growth={overview.mrrGrowthRate || '+14.8%'}
@@ -354,7 +321,7 @@ export const SuperAdminAnalytics = () => {
       </div>
 
       {/* LEVEL 2: Asset Fleet Intelligence & Financial Exposure */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         <div className="lg:col-span-7">
           <AssetFleetIntelligenceCard data={assetFleet} />
         </div>
@@ -364,19 +331,19 @@ export const SuperAdminAnalytics = () => {
       </div>
 
       {/* LEVEL 2: Operations & Maintenance Grid */}
-      <div ref={sectionOperationsRef} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <OperationalAnalytics data={operationalTickets} />
         <MaintenanceAnalytics data={maintenance} />
       </div>
 
       {/* LEVEL 2: Platform Support & SLA Compliance Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <PlatformSupportAnalytics data={platformSupport} />
         <SlaAnalytics data={sla} />
       </div>
 
       {/* LEVEL 2: Subscription Distribution & Warranty Intelligence Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Dynamic Plan Subscriptions Card */}
         <div className="lg:col-span-6">
           <Card hoverLift className="p-5 space-y-4">
@@ -428,7 +395,7 @@ export const SuperAdminAnalytics = () => {
       </div>
 
       {/* LEVEL 3: User Roles & Security Risk Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* User Role Distribution */}
         <div className="lg:col-span-6">
           <Card hoverLift className="space-y-4">

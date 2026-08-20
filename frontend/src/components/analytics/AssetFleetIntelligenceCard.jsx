@@ -37,9 +37,9 @@ export const AssetFleetIntelligenceCard = ({ data = {} }) => {
   const criticalPct = Math.round((healthBands.critical / totalAssets) * 100) || 0;
 
   return (
-    <Card hoverLift className="space-y-6">
+    <Card hoverLift className="space-y-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center">
             <HardDrive className="w-4 h-4" />
@@ -60,40 +60,40 @@ export const AssetFleetIntelligenceCard = ({ data = {} }) => {
       </div>
 
       {/* Fleet Status & Health Distribution Strip */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Status Distribution */}
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider block">
             Fleet Deployment Status
           </span>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
+            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Assigned</span>
               <span className="text-lg font-extrabold text-slate-900 dark:text-white">{byStatus.assigned}</span>
             </div>
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
+            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
               <span className="text-[10px] uppercase font-bold text-slate-400 block">In Stock</span>
               <span className="text-lg font-extrabold text-indigo-600 dark:text-indigo-400">{byStatus.stock}</span>
             </div>
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
+            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Repair</span>
               <span className="text-lg font-extrabold text-amber-600 dark:text-amber-400">{byStatus.repair}</span>
             </div>
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
+            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Retired</span>
               <span className="text-lg font-extrabold text-slate-500">{byStatus.retired}</span>
             </div>
           </div>
 
           {/* Segmented Distribution Bar */}
-          <div className="space-y-1.5 pt-1">
+          <div className="space-y-1 pt-0.5">
             <div className="flex justify-between text-xs text-slate-500">
               <span>Health Spectrum</span>
               <span className="font-bold text-slate-700 dark:text-slate-300">
                 {healthyPct}% Healthy • {warningPct}% Warning • {criticalPct}% Critical
               </span>
             </div>
-            <div className="h-3 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
+            <div className="h-2.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
               <div style={{ width: `${healthyPct}%` }} className="bg-emerald-500 h-full" title={`Healthy: ${healthBands.healthy}`} />
               <div style={{ width: `${warningPct}%` }} className="bg-amber-500 h-full" title={`Warning: ${healthBands.warning}`} />
               <div style={{ width: `${criticalPct}%` }} className="bg-rose-500 h-full" title={`Critical: ${healthBands.critical}`} />
@@ -102,26 +102,26 @@ export const AssetFleetIntelligenceCard = ({ data = {} }) => {
         </div>
 
         {/* Lifecycle & Replacement */}
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider block">
             Lifecycle & Replacement Forecast
           </span>
           <div className="grid grid-cols-3 gap-2">
-            <div className="p-3 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40">
+            <div className="p-2.5 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40">
               <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 block uppercase">New (&lt;6mo)</span>
               <span className="text-base font-bold text-emerald-900 dark:text-emerald-200">{lifecycle.newAssets}</span>
             </div>
-            <div className="p-3 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40">
+            <div className="p-2.5 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40">
               <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 block uppercase">Mid-Life</span>
               <span className="text-base font-bold text-amber-900 dark:text-amber-200">{lifecycle.agingAssets}</span>
             </div>
-            <div className="p-3 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40">
+            <div className="p-2.5 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40">
               <span className="text-[10px] font-bold text-rose-700 dark:text-rose-300 block uppercase">End-of-Life</span>
               <span className="text-base font-bold text-rose-900 dark:text-rose-200">{lifecycle.approachingRetirement}</span>
             </div>
           </div>
 
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-xs">
+          <div className="p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-xs">
             <span className="text-slate-600 dark:text-slate-400">Recommended Action:</span>
             <div className="flex items-center gap-3 font-semibold">
               <span className="text-emerald-600">{lifecycle.replacementRecommendations?.keep || 0} Keep</span>
@@ -135,12 +135,12 @@ export const AssetFleetIntelligenceCard = ({ data = {} }) => {
       </div>
 
       {/* Data-Driven AI Insights Observations */}
-      <div className="p-4 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/50 space-y-2">
+      <div className="p-3 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/50 space-y-1.5">
         <div className="flex items-center gap-2 text-xs font-bold text-purple-900 dark:text-purple-200 uppercase tracking-wider">
           <Sparkles className="w-4 h-4 text-purple-600" />
           <span>Fleet AI Insights & Observations</span>
         </div>
-        <ul className="space-y-1.5 pl-6 list-disc text-xs text-purple-950 dark:text-purple-200/90 leading-relaxed">
+        <ul className="space-y-1 pl-5 list-disc text-xs text-purple-950 dark:text-purple-200/90 leading-relaxed">
           {aiInsights.map((insight, i) => (
             <li key={i}>{insight}</li>
           ))}
