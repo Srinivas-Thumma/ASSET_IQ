@@ -107,28 +107,32 @@ export const AssetFleetIntelligenceCard = ({ data = {} }) => {
             Lifecycle & Replacement Forecast
           </span>
           <div className="grid grid-cols-3 gap-2">
-            <div className="p-2.5 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40">
-              <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 block uppercase">New (&lt;6mo)</span>
-              <span className="text-base font-bold text-emerald-900 dark:text-emerald-200">{lifecycle.newAssets}</span>
+            <div className="p-2.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/50 flex flex-col justify-between">
+              <span className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-300 block uppercase tracking-wider">New (&lt; 6 mo)</span>
+              <span className="text-xl font-black text-emerald-900 dark:text-emerald-100 mt-1">{lifecycle.newAssets || 0}</span>
             </div>
-            <div className="p-2.5 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40">
-              <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 block uppercase">Mid-Life</span>
-              <span className="text-base font-bold text-amber-900 dark:text-amber-200">{lifecycle.agingAssets}</span>
+            <div className="p-2.5 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/50 flex flex-col justify-between">
+              <span className="text-[10px] font-extrabold text-amber-700 dark:text-amber-300 block uppercase tracking-wider">Mid-Life</span>
+              <span className="text-xl font-black text-amber-900 dark:text-amber-100 mt-1">{lifecycle.agingAssets || 0}</span>
             </div>
-            <div className="p-2.5 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40">
-              <span className="text-[10px] font-bold text-rose-700 dark:text-rose-300 block uppercase">End-of-Life</span>
-              <span className="text-base font-bold text-rose-900 dark:text-rose-200">{lifecycle.approachingRetirement}</span>
+            <div className="p-2.5 rounded-xl bg-rose-50/60 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-900/50 flex flex-col justify-between">
+              <span className="text-[10px] font-extrabold text-rose-700 dark:text-rose-300 block uppercase tracking-wider">End-of-Life</span>
+              <span className="text-xl font-black text-rose-900 dark:text-rose-100 mt-1">{lifecycle.approachingRetirement || 0}</span>
             </div>
           </div>
 
-          <div className="p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-xs">
-            <span className="text-slate-600 dark:text-slate-400">Recommended Action:</span>
-            <div className="flex items-center gap-3 font-semibold">
-              <span className="text-emerald-600">{lifecycle.replacementRecommendations?.keep || 0} Keep</span>
-              <span>•</span>
-              <span className="text-amber-600">{lifecycle.replacementRecommendations?.repair || 0} Repair</span>
-              <span>•</span>
-              <span className="text-rose-600 font-bold">{lifecycle.replacementRecommendations?.replace || 0} Replace</span>
+          <div className="p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/70 dark:border-slate-700/70 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span className="font-semibold text-slate-600 dark:text-slate-400">AI Recommendations:</span>
+            <div className="flex items-center gap-2 text-xs font-bold">
+              <span className="px-2 py-0.5 rounded-md bg-emerald-100/80 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60">
+                {lifecycle.replacementRecommendations?.keep || 0} Keep
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-amber-100/80 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900/60">
+                {lifecycle.replacementRecommendations?.repair || 0} Repair
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-rose-100/80 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60">
+                {lifecycle.replacementRecommendations?.replace || 0} Replace
+              </span>
             </div>
           </div>
         </div>

@@ -46,7 +46,7 @@ export const PlatformSupportAnalytics = ({ data = {} }) => {
           </div>
           <div>
             <CardTitle>Platform Support Cases</CardTitle>
-            <CardDescription>Org Admin $\leftrightarrow$ SuperAdmin enterprise support inquiries</CardDescription>
+            <CardDescription>Org Admin ↔ SuperAdmin enterprise support inquiries</CardDescription>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -97,7 +97,7 @@ export const PlatformSupportAnalytics = ({ data = {} }) => {
       </div>
 
       <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
-        <span>Simplified Lifecycle: <strong className="text-slate-600 dark:text-slate-300">Open $\rightarrow$ In Progress $\rightarrow$ Resolved</strong></span>
+        <span>Simplified Lifecycle: <strong className="text-slate-600 dark:text-slate-300">Open → In Progress → Resolved</strong></span>
         <span>Priority (P1: {byPriority.p1}, P2: {byPriority.p2}, P3: {byPriority.p3}, P4: {byPriority.p4})</span>
       </div>
     </Card>

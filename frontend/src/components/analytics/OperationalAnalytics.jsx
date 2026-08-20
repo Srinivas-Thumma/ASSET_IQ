@@ -41,7 +41,7 @@ export const OperationalAnalytics = ({ data = {} }) => {
           </div>
           <div>
             <CardTitle>Operational IT Ticket Activity</CardTitle>
-            <CardDescription>Employee $\leftrightarrow$ Asset Manager tickets (Repairs, Requests, Returns)</CardDescription>
+            <CardDescription>Employee ↔ Asset Manager tickets (Repairs, Requests, Returns)</CardDescription>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -123,7 +123,7 @@ export const OperationalAnalytics = ({ data = {} }) => {
 
       <div className="flex items-center justify-between pt-1 text-xs text-slate-500 dark:text-slate-400">
         <span>Average Turnaround Time: <strong className="text-slate-800 dark:text-slate-200">{data.avgResolutionHours || 0} hours</strong></span>
-        <span>Lifecycle: <strong className="text-slate-700 dark:text-slate-300">Open $\rightarrow$ Claim $\rightarrow$ In Progress $\rightarrow$ Resolved $\rightarrow$ Closed</strong></span>
+        <span>Lifecycle: <strong className="text-slate-700 dark:text-slate-300">Open → Claim → In Progress → Resolved → Closed</strong></span>
       </div>
     </Card>
   );
