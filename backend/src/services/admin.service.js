@@ -631,19 +631,45 @@ export const getSuperAdminAnalytics = async (filters = {}) => {
     }
   });
 
-  // Assets by Category
+  // Assets by Category (Cleaned Names)
+  const cleanCategoryName = (rawName) => {
+    if (!rawName) return 'Hardware';
+    let cleaned = rawName.replace(/[-_]test[-_].*$/i, '').trim();
+    return cleaned || rawName;
+  };
+
   const categoryMap = new Map();
+  let totalFleetValue = 0;
+  let replacementExposureValue = 0;
+  let upcomingReplacementValue = 0;
+
   assets.forEach((a) => {
-    const catName = a.categoryId?.name || a.categoryName || 'Hardware';
-    const existing = categoryMap.get(catName) || { name: catName, count: 0, totalHealth: 0 };
+    const price = a.purchasePrice || 0;
+    totalFleetValue += price;
+
+    const catName = cleanCategoryName(a.categoryId?.name || a.categoryName);
+    const existing = categoryMap.get(catName) || { name: catName, count: 0, totalHealth: 0, totalValue: 0 };
     existing.count++;
     existing.totalHealth += (a.ai?.healthScore || a.healthScore || 90);
+    existing.totalValue += price;
     categoryMap.set(catName, existing);
+
+    const score = typeof a.ai?.healthScore === 'number' ? a.ai.healthScore : (typeof a.healthScore === 'number' ? a.healthScore : 90);
+    const rec = a.ai?.replacementRecommendation || 'keep';
+    if (rec === 'replace' || score < 60) {
+      replacementExposureValue += price;
+    }
+    if ((a.ai?.remainingUsefulLifeMonths != null && a.ai.remainingUsefulLifeMonths <= 3) ||
+        (a.expectedRetirementDate && new Date(a.expectedRetirementDate) <= ninetyDaysFuture)) {
+      upcomingReplacementValue += price;
+    }
   });
+
   const assetsByCategory = Array.from(categoryMap.values()).map((c) => ({
     name: c.name,
     count: c.count,
-    avgHealth: Math.round(c.totalHealth / c.count)
+    avgHealth: Math.round(c.totalHealth / c.count),
+    totalValue: c.totalValue
   })).sort((a, b) => b.count - a.count);
 
   // Data-Driven AI Insights Facts
@@ -914,7 +940,7 @@ export const getSuperAdminAnalytics = async (filters = {}) => {
   });
 
   // -------------------------------------------------------------
-  // 10. RECENT PLATFORM ACTIVITY (Audit Telemetry)
+  // 10. RECENT PLATFORM ACTIVITY (Audit Telemetry with Grouping)
   // -------------------------------------------------------------
   const actionLabels = {
     asset_created: 'Created new hardware asset',
@@ -937,35 +963,82 @@ export const getSuperAdminAnalytics = async (filters = {}) => {
     ai_health_analyzed: 'Executed AI health diagnostic'
   };
 
-  const activityFeed = recentAudits.map((log) => ({
-    _id: log._id,
-    actor: log.actorId?.name || log.actorId?.email || 'Platform System',
-    actorRole: log.actorRole,
-    organizationName: log.organizationId?.name || 'Platform Admin',
-    action: log.action,
-    actionLabel: actionLabels[log.action] || log.action?.replace(/_/g, ' '),
-    targetType: log.targetType,
-    targetId: log.targetId,
-    metadata: log.metadata,
-    createdAt: log.createdAt
-  }));
+  const groupedActivity = [];
+  recentAudits.forEach((log) => {
+    const actionLabel = actionLabels[log.action] || log.action?.replace(/_/g, ' ');
+    const actor = log.actorId?.name || log.actorId?.email || 'Platform System';
+    const orgName = log.organizationId?.name || 'Platform Admin';
+
+    const last = groupedActivity[groupedActivity.length - 1];
+    if (last && last.action === log.action && last.actor === actor && last.organizationName === orgName) {
+      last.count = (last.count || 1) + 1;
+      last.displayLabel = `${last.count} ${actionLabel} actions`;
+    } else {
+      groupedActivity.push({
+        _id: log._id,
+        actor,
+        actorRole: log.actorRole,
+        organizationName: orgName,
+        action: log.action,
+        actionLabel,
+        displayLabel: actionLabel,
+        count: 1,
+        targetType: log.targetType,
+        targetId: log.targetId,
+        metadata: log.metadata,
+        createdAt: log.createdAt
+      });
+    }
+  });
 
   // -------------------------------------------------------------
-  // 11. PLATFORM HEALTH SUMMARY INDICATORS
+  // 11. PLATFORM HEALTH SCORE (0 - 100 WEIGHTED)
   // -------------------------------------------------------------
+  const tenantHealthScore = totalOrgs > 0 ? Math.max(0, 100 - (suspendedOrgs / totalOrgs) * 100) : 100;
+  const fleetHealthScore = avgFleetHealth;
+  const supportHealthScore = totalSupport > 0 ? Math.max(0, 100 - (supportOpen * 12)) : 100;
+  const slaHealthScore = overallSlaComplianceRate;
+  const opsHealthScore = totalOpTickets > 0 ? Math.max(0, 100 - (activeOverdueCount * 10)) : 100;
+
+  const overallHealthScore = Math.round(
+    tenantHealthScore * 0.20 +
+    fleetHealthScore * 0.30 +
+    supportHealthScore * 0.15 +
+    slaHealthScore * 0.25 +
+    opsHealthScore * 0.10
+  );
+
+  const healthStatusLabel = overallHealthScore >= 85 ? 'Healthy' : overallHealthScore >= 70 ? 'Attention Required' : 'Critical Risk';
+
   const platformHealth = {
+    score: overallHealthScore,
+    statusLabel: healthStatusLabel,
     tenantHealth: suspendedOrgs === 0 ? 'Healthy' : `${suspendedOrgs} Suspended`,
     fleetHealth: avgFleetHealth >= 80 ? 'Healthy' : avgFleetHealth >= 60 ? 'Attention' : 'Critical',
     supportHealth: supportOpen === 0 ? 'Optimal' : supportOpen > 5 ? 'Attention' : 'Active',
     slaHealth: overallSlaComplianceRate >= 90 ? 'Healthy' : overallSlaComplianceRate >= 75 ? 'Attention' : 'Critical',
-    activityHealth: activityFeed.length > 0 ? 'Active' : 'Idle'
+    opsHealth: activeOverdueCount === 0 ? 'Optimal' : `${activeOverdueCount} Overdue`,
+    securityHealth: 'Telemetry Operational'
   };
 
-  // -------------------------------------------------------------
-  // 12. CHARTS & HISTORICAL TRENDS
-  // -------------------------------------------------------------
-  // Dynamic monthly timeline for MRR, Ticket volume, and Tenant growth
-  const months = ['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'];
+  // Security Risk Metrics
+  const securityAudits = recentAudits.filter((a) =>
+    ['user_created', 'user_updated', 'user_deleted', 'user_suspended'].includes(a.action)
+  );
+
+  const security = {
+    totalSecurityEvents: securityAudits.length,
+    suspendedUsers: inactiveUsers,
+    suspendedOrgs,
+    recentEvents: securityAudits.map((s) => ({
+      _id: s._id,
+      actor: s.actorId?.email || 'Admin',
+      action: s.action,
+      createdAt: s.createdAt
+    }))
+  };
+
+  // Dynamic monthly timeline for MRR and Tenant growth
   const mrrTrend = [
     { month: 'Apr', value: Math.round(totalMRR * 0.72) },
     { month: 'May', value: Math.round(totalMRR * 0.81) },
@@ -1004,6 +1077,7 @@ export const getSuperAdminAnalytics = async (filters = {}) => {
       activeUsers,
       inactiveUsers,
       avgFleetHealth,
+      openOpWorkload: opOpen + opInProgress,
       mrrGrowthRate: '+14.8%',
       arrGrowthRate: '+18.2%',
       assetGrowthRate: '+22.4%',
@@ -1024,6 +1098,9 @@ export const getSuperAdminAnalytics = async (filters = {}) => {
       totalAssets,
       byStatus: assetsByStatus,
       avgFleetHealth,
+      totalFleetValue,
+      replacementExposureValue,
+      upcomingReplacementValue,
       healthBands: {
         healthy: healthyCount,
         warning: warningCount,
@@ -1089,8 +1166,9 @@ export const getSuperAdminAnalytics = async (filters = {}) => {
       inactiveUsers,
       byRole: usersByRole
     },
+    security,
     attentionRequired,
-    recentActivity: activityFeed,
+    recentActivity: groupedActivity,
     platformHealth
   };
 };

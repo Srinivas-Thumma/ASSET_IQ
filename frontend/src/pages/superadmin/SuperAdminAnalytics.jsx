@@ -17,7 +17,10 @@ import {
   RefreshCw,
   Layers,
   Filter,
-  CreditCard
+  CreditCard,
+  Ticket,
+  Lock,
+  XCircle
 } from 'lucide-react';
 import adminApi from '../../api/admin.api.js';
 import KpiCard from '../../components/ui/KpiCard.jsx';
@@ -26,15 +29,17 @@ import Button from '../../components/ui/Button.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Skeleton from '../../components/ui/Skeleton.jsx';
 import Breadcrumbs from '../../components/ui/Breadcrumbs.jsx';
+import PlatformHealthGaugeCard from '../../components/analytics/PlatformHealthGaugeCard.jsx';
 import MrrTrendChart from '../../components/analytics/MrrTrendChart.jsx';
 import TenantGrowthChart from '../../components/analytics/TenantGrowthChart.jsx';
-import PlatformHealthSummary from '../../components/analytics/PlatformHealthSummary.jsx';
 import AssetFleetIntelligenceCard from '../../components/analytics/AssetFleetIntelligenceCard.jsx';
+import AssetFinancialExposureCard from '../../components/analytics/AssetFinancialExposureCard.jsx';
 import OperationalAnalytics from '../../components/analytics/OperationalAnalytics.jsx';
 import MaintenanceAnalytics from '../../components/analytics/MaintenanceAnalytics.jsx';
 import PlatformSupportAnalytics from '../../components/analytics/PlatformSupportAnalytics.jsx';
 import SlaAnalytics from '../../components/analytics/SlaAnalytics.jsx';
 import WarrantyAnalytics from '../../components/analytics/WarrantyAnalytics.jsx';
+import SecurityAndRiskCard from '../../components/analytics/SecurityAndRiskCard.jsx';
 import OrganizationsRequiringAttention from '../../components/analytics/OrganizationsRequiringAttention.jsx';
 import PlatformActivityTimeline from '../../components/analytics/PlatformActivityTimeline.jsx';
 import { formatCurrency, formatRelative, formatDate } from '../../utils/formatters.js';
@@ -48,6 +53,12 @@ export const SuperAdminAnalytics = () => {
   const [timeRange, setTimeRange] = useState('30d');
   const [selectedOrg, setSelectedOrg] = useState('all');
   const [selectedPlan, setSelectedPlan] = useState('all');
+
+  const handleResetFilters = () => {
+    setTimeRange('30d');
+    setSelectedOrg('all');
+    setSelectedPlan('all');
+  };
 
   // 1. Fetch Consolidated SuperAdmin Analytics
   const {
@@ -129,6 +140,7 @@ export const SuperAdminAnalytics = () => {
   const sla = stats?.sla || {};
   const warranties = stats?.warranties || {};
   const userAnalytics = stats?.userAnalytics || {};
+  const security = stats?.security || {};
   const attentionRequired = stats?.attentionRequired || [];
   const recentActivity = stats?.recentActivity || [];
   const platformHealth = stats?.platformHealth || {};
@@ -136,72 +148,74 @@ export const SuperAdminAnalytics = () => {
 
   const kpis = [
     {
-      title: 'Total MRR',
-      value: `$${(overview.totalMRR || 0).toLocaleString()}`,
-      delta: overview.mrrGrowthRate || '+14.8%',
-      deltaLabel: 'active revenue',
-      icon: DollarSign,
-      trend: [1000, 1150, 1300, 1400, overview.totalMRR || 1490]
-    },
-    {
-      title: 'Annualized ARR',
-      value: `$${(overview.totalARR || 0).toLocaleString()}`,
-      delta: overview.arrGrowthRate || '+18.2%',
-      deltaLabel: 'run-rate',
-      icon: TrendingUp,
-      trend: [12000, 14000, 16000, overview.totalARR || 17880]
-    },
-    {
-      title: 'Active Tenants',
+      title: 'Active Organizations',
       value: `${overview.activeOrganizations || 0} / ${overview.totalOrganizations || 0}`,
       delta: `+${overview.newOrgsThisMonth || 0}`,
-      deltaLabel: 'new this mo',
+      deltaLabel: 'new this month',
       icon: Building2,
       trend: [1, 1, 2, 2, overview.activeOrganizations || 2]
     },
     {
       title: 'Total Assets',
-      value: overview.totalAssets || 0,
+      value: (overview.totalAssets || 0).toLocaleString(),
       delta: overview.assetGrowthRate || '+22.4%',
       deltaLabel: 'fleet size',
       icon: HardDrive,
       trend: [20, 28, 35, overview.totalAssets || 45]
     },
     {
-      title: 'Global Users',
-      value: overview.totalUsers || 0,
-      delta: `${overview.activeUsers || 0} active`,
-      deltaLabel: 'accounts',
+      title: 'Active Users',
+      value: `${(overview.activeUsers || 0).toLocaleString()} / ${(overview.totalUsers || 0).toLocaleString()}`,
+      delta: `${overview.inactiveUsers || 0} inactive`,
+      deltaLabel: 'registered accounts',
       icon: Users,
       trend: [5, 8, 10, overview.totalUsers || 12]
     },
     {
-      title: 'Avg Fleet Health',
+      title: 'Fleet Health',
       value: `${overview.avgFleetHealth || 90} / 100`,
       delta: overview.avgFleetHealth >= 80 ? 'Optimal' : 'Attention',
-      deltaLabel: 'AI diagnostic',
+      deltaLabel: 'AI diagnostic score',
       icon: Activity,
       trend: [90, 92, 94, overview.avgFleetHealth || 90]
+    },
+    {
+      title: 'Open Operational Workload',
+      value: overview.openOpWorkload || 0,
+      delta: `${operationalTickets.open || 0} open backlog`,
+      deltaLabel: 'active tickets',
+      icon: Ticket,
+      trend: [2, 4, 3, overview.openOpWorkload || 5]
+    },
+    {
+      title: 'MRR',
+      value: `$${(overview.totalMRR || 0).toLocaleString()}`,
+      delta: `ARR: $${(overview.totalARR || 0).toLocaleString()}`,
+      deltaLabel: 'annualized run-rate',
+      icon: DollarSign,
+      trend: [1000, 1150, 1300, 1400, overview.totalMRR || 1490]
     }
   ];
+
+  const hasActiveFilters = timeRange !== '30d' || selectedOrg !== 'all' || selectedPlan !== 'all';
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
       <Breadcrumbs
         items={[
           { label: 'Platform Administration', to: '/admin/dashboard' },
-          { label: 'Platform Intelligence & Analytics' }
+          { label: 'Global Platform Intelligence' }
         ]}
       />
 
-      {/* Header & Global Filters */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-[28px] font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
+          <h1 className="text-[26px] font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
             Global Platform Intelligence
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Multi-tenant revenue metrics, fleet AI condition, operational workload, and security telemetry
+            Platform-wide revenue, fleet, operations, support, and security command center
           </p>
         </div>
 
@@ -231,7 +245,7 @@ export const SuperAdminAnalytics = () => {
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-purple-600 shrink-0" />
             <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-              Analytics Scope:
+              Telemetry Scope:
             </span>
           </div>
 
@@ -276,14 +290,25 @@ export const SuperAdminAnalytics = () => {
                 </option>
               ))}
             </select>
+
+            {/* Reset Action */}
+            {hasActiveFilters && (
+              <button
+                onClick={handleResetFilters}
+                className="h-8 px-2.5 text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1"
+              >
+                <XCircle className="w-3.5 h-3.5" />
+                Reset
+              </button>
+            )}
           </div>
         </div>
       </Card>
 
-      {/* Platform Health Summary Strip */}
-      <PlatformHealthSummary health={platformHealth} />
+      {/* LEVEL 1: Platform Health Score Card */}
+      <PlatformHealthGaugeCard health={platformHealth} />
 
-      {/* 6 Top-Level KPI Cards Grid */}
+      {/* LEVEL 1: 6 Core KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {kpis.map((kpi, idx) => (
           <KpiCard
@@ -298,7 +323,10 @@ export const SuperAdminAnalytics = () => {
         ))}
       </div>
 
-      {/* SaaS & Revenue Performance Charts */}
+      {/* LEVEL 1: Organizations Requiring Attention (Top Risk Card) */}
+      <OrganizationsRequiringAttention organizations={attentionRequired} />
+
+      {/* LEVEL 2: Platform Growth & Revenue Performance */}
       <div ref={sectionChartsRef} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-7">
           <MrrTrendChart
@@ -325,100 +353,104 @@ export const SuperAdminAnalytics = () => {
         </div>
       </div>
 
-      {/* Dynamic Plan Subscriptions Breakdown */}
-      {saas.planDistribution && saas.planDistribution.length > 0 && (
-        <Card hoverLift className="p-5 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-purple-600" />
-              <div>
-                <CardTitle>Plan Subscriptions & Capacity Distribution</CardTitle>
-                <CardDescription>Live subscriber distribution by plan tier configured in database</CardDescription>
-              </div>
-            </div>
-            <span className="text-xs text-slate-400">
-              Avg {saas.avgUsersPerTenant || 0} users • {saas.avgAssetsPerTenant || 0} assets / org
-            </span>
-          </div>
+      {/* LEVEL 2: Asset Fleet Intelligence & Financial Exposure */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-7">
+          <AssetFleetIntelligenceCard data={assetFleet} />
+        </div>
+        <div className="lg:col-span-5">
+          <AssetFinancialExposureCard assetFleet={assetFleet} />
+        </div>
+      </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {saas.planDistribution.map((plan) => (
-              <div
-                key={plan._id || plan.slug}
-                className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 space-y-2"
-              >
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-sm text-slate-900 dark:text-white">
-                    {plan.name}
-                  </span>
-                  <Badge variant="purple">${plan.price}/mo</Badge>
-                </div>
-                <div className="flex justify-between items-end pt-1">
-                  <div>
-                    <span className="text-2xl font-extrabold text-purple-700 dark:text-purple-300">
-                      {plan.subscribersCount}
-                    </span>
-                    <span className="text-xs text-slate-400 ml-1.5">
-                      {plan.subscribersCount === 1 ? 'tenant' : 'tenants'} ({plan.percent}%)
-                    </span>
-                  </div>
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    ${plan.mrr.toLocaleString()}/mo MRR
-                  </span>
-                </div>
-                <div className="text-[11px] text-slate-400 pt-1 border-t border-slate-200/40 dark:border-slate-700/40 flex justify-between">
-                  <span>Quota: {plan.maxAssets} Assets</span>
-                  <span>{plan.maxEmployees} Users</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* Asset Fleet & AI Health Intelligence Card */}
-      <AssetFleetIntelligenceCard data={assetFleet} />
-
-      {/* Operational IT Tickets & Hardware Maintenance Grid */}
+      {/* LEVEL 2: Operations & Maintenance Grid */}
       <div ref={sectionOperationsRef} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <OperationalAnalytics data={operationalTickets} />
         <MaintenanceAnalytics data={maintenance} />
       </div>
 
-      {/* Platform Support & SLA Compliance Grid */}
+      {/* LEVEL 2: Platform Support & SLA Compliance Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <PlatformSupportAnalytics data={platformSupport} />
         <SlaAnalytics data={sla} />
       </div>
 
-      {/* Warranty Coverage & User Role Analytics Grid */}
+      {/* LEVEL 2: Subscription Distribution & Warranty Intelligence Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-7">
-          <WarrantyAnalytics data={warranties} />
+        {/* Dynamic Plan Subscriptions Card */}
+        <div className="lg:col-span-6">
+          <Card hoverLift className="p-5 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-purple-600" />
+                <div>
+                  <CardTitle>Subscription Plan Distribution</CardTitle>
+                  <CardDescription>Tenant distribution by active database plans</CardDescription>
+                </div>
+              </div>
+              <span className="text-xs text-slate-400 font-mono">
+                Avg {saas.avgUsersPerTenant || 0} users / org
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {(saas.planDistribution || []).map((plan) => (
+                <div
+                  key={plan._id || plan.slug}
+                  className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between gap-3 text-xs"
+                >
+                  <div className="min-w-0">
+                    <span className="font-bold text-slate-900 dark:text-white block truncate">
+                      {plan.name}
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      Quota: {plan.maxAssets} Assets • {plan.maxEmployees} Users
+                    </span>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="font-extrabold text-purple-700 dark:text-purple-300 block">
+                      {plan.subscribersCount} tenants ({plan.percent}%)
+                    </span>
+                    <span className="text-[11px] text-slate-500 font-semibold">
+                      ${plan.mrr.toLocaleString()}/mo MRR
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
         </div>
 
-        {/* Platform Users by Role Card */}
-        <div className="lg:col-span-5">
+        {/* Warranty Expiration Card */}
+        <div className="lg:col-span-6">
+          <WarrantyAnalytics data={warranties} />
+        </div>
+      </div>
+
+      {/* LEVEL 3: User Roles & Security Risk Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* User Role Distribution */}
+        <div className="lg:col-span-6">
           <Card hoverLift className="space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-purple-600" />
                 <div>
                   <CardTitle>Platform User Accounts</CardTitle>
-                  <CardDescription>Accounts classified by authentic system role</CardDescription>
+                  <CardDescription>Registered accounts by RBAC role</CardDescription>
                 </div>
               </div>
-              <Badge variant="purple">{userAnalytics.totalUsers || 0} Total</Badge>
+              <Badge variant="purple">{userAnalytics.totalUsers || 0} Accounts</Badge>
             </div>
 
-            <div className="space-y-2.5">
+            <div className="grid grid-cols-2 gap-2.5 text-xs">
               {[
-                { role: 'Super Administrators', key: 'super_admin', count: userAnalytics.byRole?.super_admin || 0, badge: 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300' },
-                { role: 'Organization Administrators', key: 'org_admin', count: userAnalytics.byRole?.org_admin || 0, badge: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' },
-                { role: 'Asset Managers', key: 'asset_manager', count: userAnalytics.byRole?.asset_manager || 0, badge: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' },
-                { role: 'Employees & Staff', key: 'employee', count: userAnalytics.byRole?.employee || 0, badge: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' }
+                { role: 'Super Admin', count: userAnalytics.byRole?.super_admin || 0, badge: 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300' },
+                { role: 'Org Admin', count: userAnalytics.byRole?.org_admin || 0, badge: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' },
+                { role: 'Asset Manager', count: userAnalytics.byRole?.asset_manager || 0, badge: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' },
+                { role: 'Employee', count: userAnalytics.byRole?.employee || 0, badge: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' }
               ].map((r) => (
-                <div key={r.key} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between text-xs">
+                <div key={r.role} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between">
                   <span className="font-semibold text-slate-800 dark:text-slate-200">{r.role}</span>
                   <span className={`px-2 py-0.5 rounded-md font-bold ${r.badge}`}>
                     {r.count}
@@ -433,12 +465,14 @@ export const SuperAdminAnalytics = () => {
             </div>
           </Card>
         </div>
+
+        {/* Security & Risk Card */}
+        <div className="lg:col-span-6">
+          <SecurityAndRiskCard security={security} />
+        </div>
       </div>
 
-      {/* Organizations Requiring Attention */}
-      <OrganizationsRequiringAttention organizations={attentionRequired} />
-
-      {/* Recent Platform Activity & Telemetry Timeline */}
+      {/* LEVEL 3: Grouped Activity Telemetry Timeline with Filter Tabs */}
       <PlatformActivityTimeline activities={recentActivity} />
     </div>
   );

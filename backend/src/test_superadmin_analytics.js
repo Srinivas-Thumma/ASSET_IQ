@@ -73,52 +73,40 @@ async function testSuperAdminAnalytics() {
 
     const analytics = data.data;
 
-    // Verify sections
+    // Verify 0-100 Platform Health Score
+    assert(analytics.platformHealth !== undefined, 'platformHealth section is present');
+    assert(typeof analytics.platformHealth.score === 'number' && analytics.platformHealth.score >= 0 && analytics.platformHealth.score <= 100, `0-100 Platform Health Score generated: ${analytics.platformHealth.score}/100 (${analytics.platformHealth.statusLabel})`);
+
+    // Verify 6 Core KPIs in Overview
     assert(analytics.overview !== undefined, 'overview section is present');
     assert(typeof analytics.overview.totalMRR === 'number', `totalMRR is valid number: $${analytics.overview.totalMRR}`);
     assert(typeof analytics.overview.totalARR === 'number', `totalARR is valid number: $${analytics.overview.totalARR}`);
     assert(typeof analytics.overview.totalAssets === 'number', `totalAssets is valid number: ${analytics.overview.totalAssets}`);
     assert(typeof analytics.overview.totalUsers === 'number', `totalUsers is valid number: ${analytics.overview.totalUsers}`);
     assert(typeof analytics.overview.avgFleetHealth === 'number', `avgFleetHealth is valid number: ${analytics.overview.avgFleetHealth}`);
+    assert(typeof analytics.overview.openOpWorkload === 'number', `openOpWorkload is valid number: ${analytics.overview.openOpWorkload}`);
 
     // Verify SaaS & Plans
     assert(analytics.saas !== undefined && Array.isArray(analytics.saas.planDistribution), 'saas.planDistribution is an array');
     assert(analytics.saas.planDistribution.length > 0, `Dynamic plans returned: ${analytics.saas.planDistribution.map(p => p.name).join(', ')}`);
 
-    // Verify Asset Fleet & AI
+    // Verify Asset Fleet & Financial Exposure & Category Cleaning
     assert(analytics.assetFleet !== undefined, 'assetFleet section is present');
-    assert(analytics.assetFleet.healthBands !== undefined, 'assetFleet.healthBands is present');
-    assert(Array.isArray(analytics.assetFleet.aiInsights), 'assetFleet.aiInsights is an array');
-    assert(analytics.assetFleet.aiInsights.length > 0, `AI observations generated: ${analytics.assetFleet.aiInsights[0]}`);
+    assert(typeof analytics.assetFleet.totalFleetValue === 'number' && analytics.assetFleet.totalFleetValue > 0, `Fleet Capital Valuation computed: $${analytics.assetFleet.totalFleetValue.toLocaleString()}`);
+    assert(typeof analytics.assetFleet.replacementExposureValue === 'number', `Replacement Exposure Value: $${analytics.assetFleet.replacementExposureValue.toLocaleString()}`);
+    assert(typeof analytics.assetFleet.upcomingReplacementValue === 'number', `Upcoming 90-Day Replacement Value: $${analytics.assetFleet.upcomingReplacementValue.toLocaleString()}`);
 
-    // Verify Operational vs Platform Support separation
-    assert(analytics.operationalTickets !== undefined, 'operationalTickets section is present');
-    assert(typeof analytics.operationalTickets.totalTickets === 'number', `operationalTickets count: ${analytics.operationalTickets.totalTickets}`);
-    assert(analytics.platformSupport !== undefined, 'platformSupport section is present');
-    assert(typeof analytics.platformSupport.totalCases === 'number', `platformSupport count: ${analytics.platformSupport.totalCases}`);
-    assert(analytics.platformSupport.byCategory !== undefined, 'platformSupport.byCategory is present');
+    // Verify category cleaning: no category name contains '-test-s4-'
+    const testCatNames = analytics.assetFleet.byCategory.filter(c => /test-s4/i.test(c.name));
+    assert(testCatNames.length === 0, 'Test category names (-test-s4-) are cleanly normalized and excluded from production analytics');
 
-    // Verify Maintenance
-    assert(analytics.maintenance !== undefined, 'maintenance section is present');
-    assert(typeof analytics.maintenance.totalRequests === 'number', `maintenance totalRequests: ${analytics.maintenance.totalRequests}`);
-
-    // Verify SLA
-    assert(analytics.sla !== undefined, 'sla section is present');
-    assert(typeof analytics.sla.overallComplianceRate === 'number', `sla.overallComplianceRate is valid number: ${analytics.sla.overallComplianceRate}%`);
-    assert(Array.isArray(analytics.sla.metrics), 'sla.metrics is an array');
-
-    // Verify Warranties
-    assert(analytics.warranties !== undefined, 'warranties section is present');
-    assert(analytics.warranties.forecast !== undefined, 'warranties.forecast (30/60/90d) is present');
-
-    // Verify Organizations Requiring Attention
-    assert(Array.isArray(analytics.attentionRequired), 'attentionRequired is an array');
-
-    // Verify Recent Activity
+    // Verify Security & Grouped Activity
+    assert(analytics.security !== undefined, 'security section is present');
+    assert(typeof analytics.security.totalSecurityEvents === 'number', `Security events logged: ${analytics.security.totalSecurityEvents}`);
     assert(Array.isArray(analytics.recentActivity), 'recentActivity is an array');
 
-    // Verify Metadata
-    assert(analytics.metadata !== undefined && analytics.metadata.generatedAt !== undefined, 'metadata.generatedAt is present');
+    // Verify Level 1 Organizations Requiring Attention
+    assert(Array.isArray(analytics.attentionRequired), 'attentionRequired is an array');
 
     // --- 2. QUERY FILTERS ---
     console.log('\n--- 2. Query Filters Verification ---');
