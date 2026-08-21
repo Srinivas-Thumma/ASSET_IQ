@@ -8,6 +8,7 @@ import TicketWork from '../../pages/manager/TicketWork.jsx';
 import SuperAdminTicketView from './SuperAdminTicketView.jsx';
 import PlatformSupportTicketView from './PlatformSupportTicketView.jsx';
 import NotFound404 from '../ui/NotFound404.jsx';
+import LottieLoader from '../ui/LottieLoader.jsx';
 
 export const TicketRouteDispatcher = () => {
   const { id } = useParams();
@@ -21,11 +22,12 @@ export const TicketRouteDispatcher = () => {
 
   if (isLoading) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto pb-16">
-        <Skeleton className="h-8 w-64 rounded-lg" />
-        <Skeleton className="h-24 w-full rounded-2xl" />
-        <Skeleton className="h-96 w-full rounded-2xl" />
-      </div>
+      <LottieLoader
+        src="/Loading 52 _ Mario.lottie"
+        className="w-44 h-44"
+        message="Loading Support Ticket Case..."
+        fullPage
+      />
     );
   }
 
