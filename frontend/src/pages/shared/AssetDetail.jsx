@@ -51,6 +51,7 @@ import HealthScoreBadge from '../../components/ui/HealthScoreBadge.jsx';
 import AIHealthWidget from '../../components/assets/AIHealthWidget.jsx';
 import RaiseTicketModal from '../../components/modals/RaiseTicketModal.jsx';
 import ReturnAssetModal from '../../components/modals/ReturnAssetModal.jsx';
+import NotFound404 from '../../components/ui/NotFound404.jsx';
 import { formatDate, formatRelative, formatCurrency, getAssetHealthScore } from '../../utils/formatters.js';
 import { toast } from 'sonner';
 
@@ -273,13 +274,11 @@ export const AssetDetail = () => {
 
   if (!asset) {
     return (
-      <div className="text-center py-16 space-y-4 max-w-md mx-auto">
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Asset Not Found</h2>
-        <p className="text-sm text-slate-500">The requested equipment does not exist or has been removed.</p>
-        <Button variant="secondary" onClick={() => navigate(-1)}>
-          Go Back
-        </Button>
-      </div>
+      <NotFound404
+        title="Asset Not Found"
+        message="The requested hardware equipment does not exist or has been decommissioned."
+        backPath={-1}
+      />
     );
   }
 

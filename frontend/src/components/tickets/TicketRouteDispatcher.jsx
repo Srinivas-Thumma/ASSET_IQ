@@ -7,7 +7,7 @@ import TicketDetail from '../../pages/employee/TicketDetail.jsx';
 import TicketWork from '../../pages/manager/TicketWork.jsx';
 import SuperAdminTicketView from './SuperAdminTicketView.jsx';
 import PlatformSupportTicketView from './PlatformSupportTicketView.jsx';
-import Skeleton from '../ui/Skeleton.jsx';
+import NotFound404 from '../ui/NotFound404.jsx';
 
 export const TicketRouteDispatcher = () => {
   const { id } = useParams();
@@ -26,6 +26,16 @@ export const TicketRouteDispatcher = () => {
         <Skeleton className="h-24 w-full rounded-2xl" />
         <Skeleton className="h-96 w-full rounded-2xl" />
       </div>
+    );
+  }
+
+  if (!ticket) {
+    return (
+      <NotFound404
+        title="Ticket Case Not Found"
+        message="The requested support case or operational ticket does not exist or has been deleted."
+        backPath={-1}
+      />
     );
   }
 

@@ -35,6 +35,7 @@ import Skeleton from '../../components/ui/Skeleton.jsx';
 import Breadcrumbs from '../../components/ui/Breadcrumbs.jsx';
 import EmptyState from '../../components/ui/EmptyState.jsx';
 import HealthScoreBadge from '../../components/ui/HealthScoreBadge.jsx';
+import NotFound404 from '../../components/ui/NotFound404.jsx';
 import { formatDate, formatRelative, formatCurrency, getAssetHealthScore } from '../../utils/formatters.js';
 import { toast } from 'sonner';
 
@@ -120,13 +121,11 @@ export const OrganizationDetail = () => {
 
   if (!org) {
     return (
-      <div className="text-center py-16 space-y-4 max-w-md mx-auto">
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Tenant Not Found</h2>
-        <p className="text-xs text-slate-500">The requested organization instance does not exist.</p>
-        <Button variant="secondary" onClick={() => navigate('/admin/organizations')}>
-          Back to Organizations
-        </Button>
-      </div>
+      <NotFound404
+        title="Tenant Organization Not Found"
+        message="The requested tenant organization instance does not exist or has been removed."
+        backPath="/admin/organizations"
+      />
     );
   }
 

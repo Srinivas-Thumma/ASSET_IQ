@@ -175,7 +175,6 @@ export const Plans = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {plans.map((plan) => {
             const subscribers = plan.subscribersCount ?? plan.subscriberCount ?? plan.subscribers ?? 0;
-            const tenantSharePct = Math.round((subscribers / totalTenantsAcrossPlans) * 100);
             const mrr = subscribers * (plan.price || 0);
             const isExpanded = expandedAnalyticsId === plan._id;
 
@@ -213,15 +212,6 @@ export const Plans = () => {
                         / month per tenant
                       </span>
                     </div>
-                  </div>
-
-                  {/* Tenant Share Progress Bar */}
-                  <div className="space-y-1.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 my-4">
-                    <div className="flex justify-between text-xs font-semibold">
-                      <span className="text-slate-600 dark:text-slate-300">Tenant Share</span>
-                      <span className="text-[#6D28D9] dark:text-purple-400">{tenantSharePct}%</span>
-                    </div>
-                    <ProgressBar value={subscribers} max={totalTenantsAcrossPlans} colorVariant="purple" />
                   </div>
 
                   {/* Features List */}

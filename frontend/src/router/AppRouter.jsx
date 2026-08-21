@@ -51,6 +51,7 @@ const AdminSupportQueue = lazy(() => import('../pages/superadmin/AdminSupportQue
 const SuperAdminSettings = lazy(() => import('../pages/superadmin/SuperAdminSettings.jsx'));
 
 import LottieLoader from '../components/ui/LottieLoader.jsx';
+import NotFound404 from '../components/ui/NotFound404.jsx';
 import { useAuthStore } from '../stores/auth.store.js';
 import { ROLE_DEFAULT_ROUTES, ROLES } from '../utils/constants.js';
 
@@ -161,8 +162,8 @@ export const AppRouter = () => {
           </Route>
         </Route>
 
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Fallback 404 Route */}
+        <Route path="*" element={<NotFound404 />} />
       </Routes>
     </Suspense>
   );

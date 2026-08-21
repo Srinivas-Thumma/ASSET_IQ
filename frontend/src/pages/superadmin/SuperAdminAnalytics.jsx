@@ -372,7 +372,7 @@ export const SuperAdminAnalytics = () => {
                   </div>
                   <div className="text-right shrink-0">
                     <span className="font-extrabold text-purple-700 dark:text-purple-300 block">
-                      {plan.subscribersCount} tenants ({plan.percent}%)
+                      {plan.subscribersCount} tenants
                     </span>
                     <span className="text-[11px] text-slate-500 font-semibold">
                       ${plan.mrr.toLocaleString()}/mo MRR
