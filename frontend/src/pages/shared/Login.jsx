@@ -16,6 +16,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/auth.store.js';
+import AmongUsMascot from '../../components/ui/AmongUsMascot.jsx';
 import { ROLE_DEFAULT_ROUTES } from '../../utils/constants.js';
 import { toast } from 'sonner';
 
@@ -210,6 +211,9 @@ export const Login = () => {
           </div>
         </div>
       </div>
+
+      {/* Floating Bottom-Right Among Us Mascot */}
+      <AmongUsMascot />
     </div>
   );
 };

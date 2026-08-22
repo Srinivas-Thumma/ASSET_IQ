@@ -18,6 +18,7 @@ import {
   Info
 } from 'lucide-react';
 import { authApi } from '../../api/auth.api.js';
+import AmongUsMascot from '../../components/ui/AmongUsMascot.jsx';
 import { toast } from 'sonner';
 
 export const Register = () => {
@@ -333,6 +334,9 @@ export const Register = () => {
           </div>
         </div>
       </div>
+
+      {/* Floating Bottom-Right Among Us Mascot */}
+      <AmongUsMascot />
     </div>
   );
 };
