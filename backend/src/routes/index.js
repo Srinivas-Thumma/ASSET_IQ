@@ -9,6 +9,8 @@ import notificationRoutes from './notification.routes.js';
 import adminRoutes from './admin.routes.js';
 import catalogRoutes from './catalog.routes.js';
 import personnelRoutes from './personnel.routes.js';
+import requestRoutes from './request.routes.js';
+import conversationRoutes from './conversation.routes.js';
 
 import { getMyAssets } from '../controllers/asset.controller.js';
 import { getTickets } from '../controllers/ticket.controller.js';
@@ -28,6 +30,8 @@ apiRouter.use('/assignments', assignmentRoutes);
 apiRouter.use('/tickets', ticketRoutes);
 apiRouter.use('/tickets/:id/messages', messageRoutes);
 apiRouter.use('/tickets/:ticketId/messages', messageRoutes);
+apiRouter.use('/requests', requestRoutes);
+apiRouter.use('/conversations', conversationRoutes);
 apiRouter.use('/dashboard', dashboardRoutes);
 apiRouter.use('/notifications', notificationRoutes);
 apiRouter.use('/admin', adminRoutes);

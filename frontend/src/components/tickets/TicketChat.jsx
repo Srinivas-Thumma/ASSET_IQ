@@ -3,36 +3,43 @@ import {
   Send,
   CheckCheck,
   Headphones,
-  Bot,
   User,
   Shield,
   Clock,
   Sparkles,
-  MessageSquare
+  MessageSquare,
+  Lock
 } from 'lucide-react';
 import Avatar from '../ui/Avatar.jsx';
 import Button from '../ui/Button.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useSocket } from '../../hooks/useSocket.js';
 import { ticketApi } from '../../api/ticket.api.js';
+import { conversationApi } from '../../api/conversation.api.js';
 import { toast } from 'sonner';
 
 export const TicketChat = ({
   ticketId,
+  conversationId,
   messages = [],
   onNewMessage,
-  readOnly = false
+  readOnly = false,
+  contextType = 'ticket'
 }) => {
   const { user } = useAuth();
   const socketRef = useSocket();
 
   const [inputMessage, setInputMessage] = useState('');
+  const [isInternalNote, setIsInternalNote] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [otherUserTyping, setOtherUserTyping] = useState(null);
 
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+
+  const isSuperAdminMaintenance = user?.role === 'super_admin' && contextType === 'ticket';
+  const isEffectiveReadOnly = readOnly || isSuperAdminMaintenance;
 
   const scrollToBottom = (smooth = true) => {
     messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
@@ -42,12 +49,30 @@ export const TicketChat = ({
     scrollToBottom(false);
   }, [messages.length]);
 
-  // WebSocket Typing Listeners
+  // WebSocket Listeners for Conversation & Legacy Ticket Rooms
   useEffect(() => {
     const socket = socketRef.current;
-    if (!socket || !ticketId) return;
+    if (!socket) return;
 
-    socket.emit('join-ticket', ticketId);
+    const activeConvId = conversationId;
+    const activeTicketId = ticketId;
+
+    if (activeConvId) {
+      socket.emit('conversation:join', activeConvId);
+    } else if (activeTicketId) {
+      socket.emit('join-ticket', activeTicketId);
+    }
+
+    const handleNewMessage = (newMsg) => {
+      if (!newMsg) return;
+      if (activeConvId && String(newMsg.conversationId) === String(activeConvId)) {
+        if (onNewMessage) onNewMessage(newMsg);
+        scrollToBottom(true);
+      } else if (!activeConvId && activeTicketId && String(newMsg.ticketId) === String(activeTicketId)) {
+        if (onNewMessage) onNewMessage(newMsg);
+        scrollToBottom(true);
+      }
+    };
 
     const handleUserTyping = (data) => {
       if (data?.user && data.user !== user?.name && data.user !== user?.email) {
@@ -59,52 +84,63 @@ export const TicketChat = ({
       setOtherUserTyping(null);
     };
 
+    socket.on('message:new', handleNewMessage);
+    socket.on('new-message', handleNewMessage);
     socket.on('user-typing', handleUserTyping);
     socket.on('user-stop-typing', handleUserStopTyping);
 
     return () => {
+      if (activeConvId) {
+        socket.emit('conversation:leave', activeConvId);
+      } else if (activeTicketId) {
+        socket.emit('leave-ticket', activeTicketId);
+      }
+      socket.off('message:new', handleNewMessage);
+      socket.off('new-message', handleNewMessage);
       socket.off('user-typing', handleUserTyping);
       socket.off('user-stop-typing', handleUserStopTyping);
     };
-  }, [socketRef, ticketId, user]);
+  }, [socketRef, conversationId, ticketId, user, onNewMessage]);
 
   const handleInputChange = (e) => {
     setInputMessage(e.target.value);
 
     const socket = socketRef.current;
-    if (!socket || !ticketId) return;
+    const activeId = conversationId || ticketId;
+    if (!socket || !activeId) return;
 
     if (!isTyping) {
       setIsTyping(true);
-      socket.emit('typing', { ticketId, user: user?.name || user?.email || 'User' });
+      socket.emit('typing', { ticketId: activeId, user: user?.name || user?.email || 'User' });
     }
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false);
-      socket.emit('stop-typing', { ticketId, user: user?.name || user?.email || 'User' });
+      socket.emit('stop-typing', { ticketId: activeId, user: user?.name || user?.email || 'User' });
     }, 2000);
   };
 
   const handleSend = async (e) => {
     e?.preventDefault();
     const cleanText = inputMessage.trim();
-    if (!cleanText || isSending || readOnly) return;
+    if (!cleanText || isSending || isEffectiveReadOnly) return;
 
     setIsSending(true);
     try {
-      const socket = socketRef.current;
-      if (socket) {
-        socket.emit('stop-typing', { ticketId, user: user?.name || user?.email || 'User' });
+      let savedMsg;
+      if (conversationId) {
+        savedMsg = await conversationApi.sendMessage(conversationId, cleanText, isInternalNote);
+      } else if (ticketId) {
+        savedMsg = await ticketApi.addMessage(ticketId, cleanText, isInternalNote);
       }
-      setIsTyping(false);
 
-      const savedMsg = await ticketApi.addMessage(ticketId, cleanText, false);
       setInputMessage('');
-      if (onNewMessage) onNewMessage(savedMsg);
+      setIsInternalNote(false);
+      if (onNewMessage && savedMsg) onNewMessage(savedMsg);
       scrollToBottom(true);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to send message');
+      toast.error(err.response?.data?.message || err.message || 'Failed to send message');
     } finally {
       setIsSending(false);
     }

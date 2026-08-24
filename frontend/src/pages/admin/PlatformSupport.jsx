@@ -11,6 +11,8 @@ import {
   Tag
 } from 'lucide-react';
 import ticketApi from '../../api/ticket.api.js';
+import { requestApi } from '../../api/request.api.js';
+import { conversationApi } from '../../api/conversation.api.js';
 import Card from '../../components/ui/Card.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Button from '../../components/ui/Button.jsx';
@@ -19,6 +21,7 @@ import EmptyState from '../../components/ui/EmptyState.jsx';
 import Skeleton from '../../components/ui/Skeleton.jsx';
 import ContactPlatformSupportModal from '../../components/modals/ContactPlatformSupportModal.jsx';
 import { formatDate, formatRelative } from '../../utils/formatters.js';
+import { toast } from 'sonner';
 
 export const PlatformSupport = () => {
   const navigate = useNavigate();
@@ -26,11 +29,33 @@ export const PlatformSupport = () => {
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [isOpeningOrgChannel, setIsOpeningOrgChannel] = useState(false);
 
   const { data: tickets = [], isLoading } = useQuery({
-    queryKey: ['platform-support-tickets'],
-    queryFn: () => ticketApi.getTickets({ type: 'admin_support' })
+    queryKey: ['platform-support-requests'],
+    queryFn: async () => {
+      try {
+        const res = await requestApi.getRequests();
+        return Array.isArray(res) ? res : res?.items || [];
+      } catch (err) {
+        return await ticketApi.getTickets({ type: 'admin_support' });
+      }
+    }
   });
+
+  const handleOpenOrgChannel = async () => {
+    setIsOpeningOrgChannel(true);
+    try {
+      const conv = await conversationApi.getOrganizationConversation();
+      if (conv?._id) {
+        navigate(`/conversations/${conv._id}`);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to open organization support channel');
+    } finally {
+      setIsOpeningOrgChannel(false);
+    }
+  };
 
   const categories = [
     { key: 'all', label: 'All Categories' },

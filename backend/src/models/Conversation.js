@@ -38,6 +38,7 @@ const conversationSchema = new mongoose.Schema(
 );
 
 // General Query Indexes
+conversationSchema.index({ contextType: 1, contextId: 1 }, { name: 'idx_query_context_lookup' });
 conversationSchema.index({ participants: 1, lastMessageAt: -1 });
 
 // Partial Unique Indexes for Context Uniqueness Rules

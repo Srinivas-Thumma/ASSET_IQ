@@ -2,7 +2,9 @@ import { Server } from 'socket.io';
 import mongoose from 'mongoose';
 import { verifyAccessToken } from '../utils/token.utils.js';
 import Ticket from '../models/Ticket.js';
+import Conversation from '../models/Conversation.js';
 import messageService from '../services/message.service.js';
+import conversationService, { verifyConversationAccess } from '../services/conversation.service.js';
 import logger from './logger.js';
 
 export let io = null;
@@ -17,7 +19,7 @@ export const initSocket = (httpServer) => {
       origin: allowedOrigins,
       credentials: true,
       methods: ['GET', 'POST']
-    },
+    }
   });
 
   // Auth middleware - strictly reject unauthenticated connections
@@ -60,6 +62,15 @@ export const initSocket = (httpServer) => {
       socket.userEmail = decoded.email || '';
       socket.userRole = decoded.role || 'employee';
       socket.orgId = decoded.organizationId || null;
+      socket.userName = decoded.name || '';
+
+      socket.user = {
+        _id: socket.userId,
+        email: socket.userEmail,
+        role: socket.userRole,
+        organizationId: socket.orgId,
+        name: socket.userName
+      };
 
       next();
     } catch (err) {
@@ -77,7 +88,128 @@ export const initSocket = (httpServer) => {
       socket.join(`user:${socket.userId}`);
     }
 
-    // Join ticket room with rigorous server-side tenant & role authorization
+    // ─────────────────────────────────────────────────────────────
+    // CONVERSATION SOCKET ARCHITECTURE (NEW)
+    // ─────────────────────────────────────────────────────────────
+
+    // Join Conversation Room with centralized authorization guard
+    socket.on('conversation:join', async (payload) => {
+      try {
+        const conversationId = typeof payload === 'string' ? payload : payload?.conversationId;
+        if (!conversationId || !mongoose.Types.ObjectId.isValid(conversationId)) {
+          socket.emit('error', { code: 'INVALID_CONVERSATION', message: 'Invalid conversation ID format' });
+          return;
+        }
+
+        const conversation = await Conversation.findById(conversationId).lean();
+        if (!conversation) {
+          socket.emit('error', { code: 'CONVERSATION_NOT_FOUND', message: 'Conversation not found' });
+          return;
+        }
+
+        // Single Source of Truth: Centralized Authorization Guard
+        const accessCheck = await verifyConversationAccess(conversation, socket.user);
+        if (!accessCheck.authorized) {
+          logger.warn(`SECURITY: Socket conversation:join blocked for user ${socket.userId}: ${accessCheck.reason}`);
+          socket.emit('error', { code: 'FORBIDDEN', message: accessCheck.reason || 'Unauthorized to join conversation' });
+          return;
+        }
+
+        socket.join(`conversation:${conversationId}`);
+        logger.info(`User ${userIdentifier} joined conversation room: conversation:${conversationId}`);
+        socket.emit('conversation:joined', { conversationId });
+      } catch (err) {
+        logger.error(`Error in socket conversation:join: ${err.message}`);
+        socket.emit('error', { code: 'JOIN_FAILED', message: 'Failed to join conversation room' });
+      }
+    });
+
+    // Leave Conversation Room
+    socket.on('conversation:leave', (payload) => {
+      const conversationId = typeof payload === 'string' ? payload : payload?.conversationId;
+      if (conversationId) {
+        socket.leave(`conversation:${conversationId}`);
+        logger.info(`User ${userIdentifier} left conversation room: conversation:${conversationId}`);
+      }
+    });
+
+    // Send Message to Conversation Thread
+    socket.on('message:send', async (data) => {
+      try {
+        const { conversationId, content, isInternal } = data || {};
+
+        if (!conversationId || !mongoose.Types.ObjectId.isValid(conversationId)) {
+          socket.emit('error', { code: 'INVALID_CONVERSATION', message: 'Valid Conversation ID is required' });
+          return;
+        }
+
+        if (!content || typeof content !== 'string' || !content.trim()) {
+          socket.emit('error', { code: 'INVALID_MESSAGE', message: 'Message content cannot be empty' });
+          return;
+        }
+
+        const conversation = await Conversation.findById(conversationId).lean();
+        if (!conversation) {
+          socket.emit('error', { code: 'CONVERSATION_NOT_FOUND', message: 'Conversation not found' });
+          return;
+        }
+
+        // Centralized Authorization Verification
+        const accessCheck = await verifyConversationAccess(conversation, socket.user);
+        if (!accessCheck.authorized) {
+          socket.emit('error', { code: 'FORBIDDEN', message: accessCheck.reason || 'Unauthorized' });
+          return;
+        }
+
+        // Write Permissions Guard A: SuperAdmin maintenance ticket read-only check
+        if (conversation.contextType === 'ticket' && socket.userRole === 'super_admin') {
+          socket.emit('error', {
+            code: 'FORBIDDEN',
+            message: 'SuperAdmin access to operational tickets is read-only'
+          });
+          return;
+        }
+
+        // Write Permissions Guard B: Employee internal note check
+        if (socket.userRole === 'employee' && isInternal) {
+          socket.emit('error', {
+            code: 'FORBIDDEN',
+            message: 'Employees are not authorized to post internal staff notes'
+          });
+          return;
+        }
+
+        // Add Message via conversation.service (Ignores client-supplied senderId, orgId, role)
+        const savedMessage = await conversationService.addMessageToConversation(
+          conversationId,
+          { content, isInternal: Boolean(isInternal) },
+          socket.user
+        );
+
+        // REAL-TIME BROADCAST WITH SERVER-SIDE INTERNAL MESSAGE FILTERING
+        if (savedMessage.isInternal) {
+          // Internal Note: Emit ONLY to authorized staff sockets in room (excluding employees)
+          const socketsInRoom = await io.in(`conversation:${conversationId}`).fetchSockets();
+          for (const s of socketsInRoom) {
+            if (s.userRole !== 'employee') {
+              s.emit('message:new', savedMessage);
+            }
+          }
+        } else {
+          // Public Message: Broadcast to all room members
+          io.to(`conversation:${conversationId}`).emit('message:new', savedMessage);
+        }
+      } catch (err) {
+        logger.error(`Error in socket message:send: ${err.message}`);
+        socket.emit('error', { code: 'MESSAGE_SEND_FAILED', message: err.message });
+      }
+    });
+
+    // ─────────────────────────────────────────────────────────────
+    // LEGACY TICKET ROOM HANDLERS (PRESERVED)
+    // ─────────────────────────────────────────────────────────────
+
+    // Join ticket room with server-side tenant & role authorization
     socket.on('join-ticket', async (ticketId) => {
       try {
         if (!ticketId || !mongoose.Types.ObjectId.isValid(ticketId)) {
@@ -85,14 +217,13 @@ export const initSocket = (httpServer) => {
           return;
         }
 
-        // Fetch ticket from database
         const ticket = await Ticket.findById(ticketId).lean();
         if (!ticket) {
           socket.emit('error', { message: 'Ticket not found' });
           return;
         }
 
-        // Super Admin can join any ticket room
+        // Super Admin can join any ticket room for audit
         if (socket.userRole === 'super_admin') {
           socket.join(`ticket:${ticketId}`);
           logger.info(`SuperAdmin ${socket.userId} joined ticket room: ticket:${ticketId}`);
@@ -100,7 +231,7 @@ export const initSocket = (httpServer) => {
           return;
         }
 
-        // Tenant Isolation: Must belong to the same organization
+        // Tenant Isolation
         if (!socket.orgId || String(ticket.organizationId) !== String(socket.orgId)) {
           logger.warn(
             `SECURITY ALERT: Cross-tenant ticket room join blocked. User ${socket.userId} (Org ${socket.orgId}) attempted to join Ticket ${ticketId} (Org ${ticket.organizationId})`
@@ -109,7 +240,7 @@ export const initSocket = (httpServer) => {
           return;
         }
 
-        // Role restriction: Employees can only join rooms for tickets they raised
+        // Employee restriction
         if (socket.userRole === 'employee') {
           const isRaisedByMe = String(ticket.raisedBy?._id || ticket.raisedBy) === String(socket.userId);
           if (!isRaisedByMe) {
@@ -121,7 +252,6 @@ export const initSocket = (httpServer) => {
           }
         }
 
-        // Authorized: Join the room
         socket.join(`ticket:${ticketId}`);
         logger.info(`User ${userIdentifier} joined authorized ticket room: ticket:${ticketId}`);
         socket.emit('ticket-joined', { ticketId });
@@ -139,7 +269,7 @@ export const initSocket = (httpServer) => {
       }
     });
 
-    // Handle new message via socket with full authorization
+    // Handle legacy message
     socket.on('send-message', async (data) => {
       try {
         const { ticketId, message, isInternal } = data || {};
@@ -177,6 +307,12 @@ export const initSocket = (httpServer) => {
           }
         }
 
+        // SuperAdmin read-only check on legacy maintenance tickets
+        if (socket.userRole === 'super_admin' && ticket.type !== 'admin_support') {
+          socket.emit('error', { message: 'SuperAdmin access to operational tickets is read-only' });
+          return;
+        }
+
         const user = {
           _id: socket.userId,
           email: socket.userEmail,
@@ -184,13 +320,11 @@ export const initSocket = (httpServer) => {
           organizationId: socket.orgId
         };
 
-        const savedMessage = await messageService.addMessage(
+        await messageService.addMessage(
           ticketId,
           { message: message.trim(), isInternal: Boolean(isInternal) },
           user
         );
-
-        // Note: messageService.addMessage emits 'new-message' to ticket room
       } catch (err) {
         logger.error(`Error processing socket message: ${err.message}`);
         socket.emit('error', { message: err.message });
@@ -217,9 +351,25 @@ export const emitToTicket = (ticketId, event, data) => {
   }
 };
 
+export const emitToConversation = async (conversationId, event, data) => {
+  if (io && conversationId) {
+    if (data && data.isInternal) {
+      const socketsInRoom = await io.in(`conversation:${conversationId}`).fetchSockets();
+      for (const s of socketsInRoom) {
+        if (s.userRole !== 'employee') {
+          s.emit(event, data);
+        }
+      }
+    } else {
+      io.to(`conversation:${conversationId}`).emit(event, data);
+    }
+  }
+};
+
 export default {
   io,
   initSocket,
   emitToUser,
-  emitToTicket
+  emitToTicket,
+  emitToConversation
 };

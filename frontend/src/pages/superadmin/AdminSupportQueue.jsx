@@ -13,6 +13,7 @@ import {
   Tag
 } from 'lucide-react';
 import ticketApi from '../../api/ticket.api.js';
+import { requestApi } from '../../api/request.api.js';
 import Card from '../../components/ui/Card.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Button from '../../components/ui/Button.jsx';
@@ -28,8 +29,15 @@ export const AdminSupportQueue = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   const { data: tickets = [], isLoading } = useQuery({
-    queryKey: ['admin-support-tickets'],
-    queryFn: () => ticketApi.getTickets({ type: 'admin_support' })
+    queryKey: ['global-admin-requests'],
+    queryFn: async () => {
+      try {
+        const res = await requestApi.getRequests();
+        return Array.isArray(res) ? res : res?.items || [];
+      } catch (err) {
+        return await ticketApi.getTickets({ type: 'admin_support' });
+      }
+    }
   });
 
   const categories = [

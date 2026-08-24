@@ -101,26 +101,34 @@ export const sanitizeMessagesForUser = (messages, user) => {
  */
 export const getOrCreateOrganizationConversation = async (organizationId) => {
   if (!organizationId || !mongoose.Types.ObjectId.isValid(organizationId)) {
-    throw new ApiError(400, 'Valid Organization ID is required');
+    throw new ApiError(400, 'Invalid organization ID');
   }
 
-  let conversation = await Conversation.findOne({
+  let conv = await Conversation.findOne({
     organizationId,
     contextType: 'organization'
   });
 
-  if (!conversation) {
-    conversation = await Conversation.create({
-      organizationId,
-      contextType: 'organization',
-      contextId: null,
-      participants: [],
-      lastMessageAt: new Date(),
-      lastMessageSnippet: 'Organization B2B channel initialized'
-    });
+  if (!conv) {
+    try {
+      conv = await Conversation.create({
+        organizationId,
+        contextType: 'organization',
+        participants: []
+      });
+    } catch (err) {
+      if (err && err.code === 11000) {
+        conv = await Conversation.findOne({
+          organizationId,
+          contextType: 'organization'
+        });
+      } else {
+        throw err;
+      }
+    }
   }
 
-  return conversation;
+  return conv;
 };
 
 /**
@@ -204,6 +212,11 @@ export const addMessageToConversation = async (conversationId, data, user) => {
   const accessCheck = await verifyConversationAccess(conversation, user);
   if (!accessCheck.authorized) {
     throw new ApiError(403, accessCheck.reason || 'Forbidden conversation access');
+  }
+
+  // SuperAdmin Read-Only Operational Ticket Write Guard
+  if (conversation.contextType === 'ticket' && user.role === 'super_admin') {
+    throw new ApiError(403, 'SuperAdmin access to operational tickets is read-only');
   }
 
   // Employee internal note guard

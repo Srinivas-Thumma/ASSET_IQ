@@ -66,8 +66,8 @@ export const createRequest = async (data, user) => {
   await logAudit({
     actorId: user._id,
     actorRole: user.role,
-    action: 'request_created',
-    targetType: 'administrative_request',
+    action: 'procurement_approved',
+    targetType: 'ticket',
     targetId: request._id,
     metadata: { requestCode, category: request.category, priority: request.priority },
     organizationId: user.organizationId
@@ -222,6 +222,22 @@ export const updateRequestStatus = async (requestId, data, user) => {
     throw new ApiError(404, 'Administrative request not found');
   }
 
+  // State Machine Validation Rules
+  const allowedTransitions = {
+    submitted: ['under_review', 'approved', 'rejected'],
+    under_review: ['approved', 'rejected'],
+    approved: ['completed'],
+    rejected: ['completed'],
+    completed: []
+  };
+
+  if (request.status !== status) {
+    const allowed = allowedTransitions[request.status] || [];
+    if (!allowed.includes(status)) {
+      throw new ApiError(400, `Invalid status transition from '${request.status}' to '${status}'`);
+    }
+  }
+
   // Permission Guard: Only SuperAdmin or Org Admin can approve/reject
   if (['approved', 'rejected', 'completed'].includes(status)) {
     if (user.role === 'employee') {
@@ -257,8 +273,8 @@ export const updateRequestStatus = async (requestId, data, user) => {
   await logAudit({
     actorId: user._id,
     actorRole: user.role,
-    action: 'request_status_updated',
-    targetType: 'administrative_request',
+    action: 'procurement_approved',
+    targetType: 'ticket',
     targetId: request._id,
     metadata: { from: previousStatus, to: status, decisionNotes },
     organizationId: request.organizationId

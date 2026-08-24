@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ShoppingCart, Check, X, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
 import Card from '../../components/ui/Card.jsx';
 import Button from '../../components/ui/Button.jsx';
@@ -7,21 +7,45 @@ import Badge from '../../components/ui/Badge.jsx';
 import EmptyState from '../../components/ui/EmptyState.jsx';
 import Breadcrumbs from '../../components/ui/Breadcrumbs.jsx';
 import { ticketApi } from '../../api/ticket.api.js';
-import { useApproveProcurement, useRejectProcurement } from '../../hooks/useDashboard.js';
+import { requestApi } from '../../api/request.api.js';
+import { toast } from 'sonner';
 import { formatDate, formatRelative } from '../../utils/formatters.js';
 
 export const ProcurementApprovals = () => {
   const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'approved' | 'all'
+  const queryClient = useQueryClient();
 
-  const { data: tickets = [], isLoading } = useQuery({
-    queryKey: ['tickets', { type: 'request' }],
-    queryFn: () => ticketApi.getTickets({ type: 'request' })
+  const { data: requests = [], isLoading } = useQuery({
+    queryKey: ['procurement-requests'],
+    queryFn: async () => {
+      try {
+        const res = await requestApi.getRequests({ category: 'procurement' });
+        return Array.isArray(res) ? res : res?.items || [];
+      } catch (err) {
+        return await ticketApi.getTickets({ type: 'request' });
+      }
+    }
   });
 
-  const approveMutation = useApproveProcurement();
-  const rejectMutation = useRejectProcurement();
+  const approveMutation = useMutation({
+    mutationFn: (id) => requestApi.approveRequest(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['procurement-requests'] });
+      toast.success('Procurement request authorized');
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to approve request')
+  });
 
-  const requestTickets = Array.isArray(tickets) ? tickets.filter((t) => t.type === 'request') : [];
+  const rejectMutation = useMutation({
+    mutationFn: (id) => requestApi.rejectRequest(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['procurement-requests'] });
+      toast.success('Procurement request declined');
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to decline request')
+  });
+
+  const requestTickets = Array.isArray(requests) ? requests : [];
 
   const pendingRequests = requestTickets.filter(
     (t) => ['open', 'claimed'].includes(t.status)
