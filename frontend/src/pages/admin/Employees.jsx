@@ -123,7 +123,7 @@ export const Employees = () => {
       header: 'Work Email',
       accessor: 'email',
       render: (row) => (
-        <span className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1.5 font-mono">
+        <span className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1.5 font-mono-code">
           <Mail className="w-3.5 h-3.5 text-slate-400" />
           <span>{row.email}</span>
         </span>

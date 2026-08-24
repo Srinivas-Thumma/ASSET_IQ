@@ -272,16 +272,16 @@ export const AssetInventory = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-20">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-[28px] font-bold text-[#1E293B] dark:text-white tracking-tight mb-2">
+          <h1 className="text-[28px] font-bold text-slate-900 dark:text-slate-100 tracking-tight mb-1">
             Hardware Asset Inventory
           </h1>
-          <p className="text-sm text-[#64748B] dark:text-slate-400 mb-6">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
             Complete lifecycle registry with real-time AI degradation tracking, bulk actions, and custodian assignment.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <Button
             variant="secondary"
             icon={Download}
@@ -294,7 +294,7 @@ export const AssetInventory = () => {
             variant="primary"
             icon={Plus}
             onClick={openRegisterModal}
-            className="text-xs bg-[#6D28D9] hover:bg-purple-700 shadow-purple-600/20"
+            className="text-xs"
           >
             Register Asset
           </Button>
@@ -303,15 +303,15 @@ export const AssetInventory = () => {
 
       {/* Filter Tabs & Search Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
-        <div className="flex items-center gap-1.5 overflow-x-auto">
+        <div className="flex items-center gap-1.5 overflow-x-auto p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/80 dark:border-slate-800">
           {['all', 'stock', 'assigned', 'repair', 'retired'].map((tab) => (
             <button
               key={tab}
               onClick={() => setFilterTab(tab)}
-              className={`px-3 py-1.5 text-xs font-bold rounded-xl capitalize transition-all cursor-pointer ${
+              className={`px-3 py-1.5 text-xs rounded-lg capitalize transition-colors duration-150 cursor-pointer ${
                 filterTab === tab
-                  ? 'bg-purple-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-semibold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium'
               }`}
             >
               {tab === 'all' ? 'All Assets' : tab}
@@ -326,7 +326,7 @@ export const AssetInventory = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by code, model, category..."
-            className="w-full pl-9 pr-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-600"
+            className="w-full pl-9 pr-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/25 focus:border-purple-600 dark:focus:border-purple-400 transition-colors"
           />
         </div>
       </div>
@@ -350,21 +350,21 @@ export const AssetInventory = () => {
         <Card className="p-0 overflow-hidden" hoverLift={false}>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
-              <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-400 text-[11px] uppercase font-bold tracking-wider border-b border-slate-100 dark:border-slate-800">
+              <thead className="bg-slate-50 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400 text-[11px] uppercase font-semibold tracking-wider border-b border-slate-200/80 dark:border-slate-800">
                 <tr>
                   <th className="px-4 py-3.5 w-10">
                     <input
                       type="checkbox"
                       checked={isAllSelected}
                       onChange={handleSelectAll}
-                      className="rounded border-slate-300 text-[#6D28D9] focus:ring-[#6D28D9] cursor-pointer"
+                      className="rounded border-slate-300 text-purple-600 focus:ring-purple-500/25 cursor-pointer"
                     />
                   </th>
                   <th className="px-3 py-3.5">Asset Code</th>
                   <th className="px-4 py-3.5">Model Name</th>
                   <th className="px-3 py-3.5">Category</th>
                   <th className="px-3 py-3.5">Custodian</th>
-                  <th className="px-3 py-3.5">AI Health</th>
+                  <th className="px-3 py-3.5 text-right">AI Health</th>
                   <th className="px-3 py-3.5">Status</th>
                   <th className="px-4 py-3.5 text-right">Actions</th>
                 </tr>
@@ -377,7 +377,7 @@ export const AssetInventory = () => {
                   return (
                     <tr
                       key={asset._id}
-                      className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${
+                      className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150 ${
                         isSelected ? 'bg-purple-50/50 dark:bg-purple-950/30' : ''
                       }`}
                     >
@@ -386,13 +386,13 @@ export const AssetInventory = () => {
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleToggleSelect(asset._id)}
-                          className="rounded border-slate-300 text-[#6D28D9] focus:ring-[#6D28D9] cursor-pointer"
+                          className="rounded border-slate-300 text-purple-600 focus:ring-purple-500/25 cursor-pointer"
                         />
                       </td>
                       <td className="px-3 py-3.5">
                         <span
                           onClick={() => navigate(`/assets/${asset._id}`)}
-                          className="font-mono text-[#6D28D9] dark:text-purple-300 font-bold cursor-pointer hover:underline"
+                          className="font-mono-code text-purple-600 dark:text-purple-300 font-bold cursor-pointer hover:underline"
                         >
                           {asset.assetCode || 'EQ-TAG'}
                         </span>
@@ -400,7 +400,7 @@ export const AssetInventory = () => {
                       <td className="px-4 py-3.5 font-bold text-slate-900 dark:text-white">
                         <span
                           onClick={() => navigate(`/assets/${asset._id}`)}
-                          className="hover:text-[#6D28D9] dark:hover:text-purple-400 cursor-pointer"
+                          className="hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer"
                         >
                           {asset.name}
                         </span>

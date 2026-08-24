@@ -195,7 +195,7 @@ export const SuperAdminDashboard = () => {
   return (
     <div className="space-y-6">
       {/* 1. Header Row */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-[28px] font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
             Platform Overview
@@ -224,44 +224,38 @@ export const SuperAdminDashboard = () => {
       </div>
 
       {/* 2. Top KPI Grid (4 Cards) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <KpiCard
           title="Active Tenants"
           value={isOrgsLoading ? '...' : activeTenantsCount}
-          delta="+12.5%"
-          deltaLabel="vs last mo"
+          deltaLabel="Active multi-tenant accounts"
           isPositive={true}
           icon={Building2}
-          trend={[1, 1, 2, 2, 2, 3]}
           onClick={() => navigate('/admin/organizations')}
         />
 
         <KpiCard
           title="Total MRR"
           value={isAnalyticsLoading ? '...' : `$${totalMrr}`}
-          delta="+18.2%"
-          deltaLabel="ARR $1,176"
+          deltaLabel="Monthly subscription revenue"
           isPositive={true}
           icon={CreditCard}
-          trend={[49, 49, 98, 98, 147]}
           onClick={() => navigate('/admin/plans')}
         />
 
         <KpiCard
           title="Total Assets"
           value={isAnalyticsLoading ? '...' : totalAssets}
-          delta="+8.4%"
-          deltaLabel="Active tracking"
+          deltaLabel="Hardware in active tracking"
           isPositive={true}
           icon={HardDrive}
-          trend={[10, 15, 22, 35, 45]}
           onClick={() => navigate('/admin/analytics')}
         />
 
         <KpiCard
           title="Admin Requests"
           value={openRequestsCount}
-          deltaLabel="Pending triage"
+          deltaLabel="Pending support triage"
           alertDot={openRequestsCount > 0}
           icon={Ticket}
           onClick={() => navigate('/admin/support')}
@@ -271,7 +265,7 @@ export const SuperAdminDashboard = () => {
       {/* 3. Charts Row (2 Panels) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Monthly Recurring Revenue Bar Chart (7 of 12 cols) */}
-        <Card className="lg:col-span-7 flex flex-col justify-between" hoverLift>
+        <Card className="lg:col-span-7 flex flex-col justify-between" hoverLift={false}>
           <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
             <div>
               <CardTitle>Monthly Recurring Revenue (MRR)</CardTitle>

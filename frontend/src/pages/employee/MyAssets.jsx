@@ -166,7 +166,7 @@ export const MyAssets = () => {
                         {asset.name}
                       </h3>
                       <div className="flex items-center gap-1.5 mt-1">
-                        <span className="font-mono text-[11px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/70 px-2 py-0.2 rounded-lg border border-purple-200/80 dark:border-purple-800">
+                        <span className="font-mono-code text-[11px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/70 px-2 py-0.2 rounded-lg border border-purple-200/80 dark:border-purple-800">
                           {asset.assetCode}
                         </span>
                         <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 capitalize">

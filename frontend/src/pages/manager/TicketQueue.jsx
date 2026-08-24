@@ -197,12 +197,12 @@ export const TicketQueue = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-[28px] font-bold text-[#1E293B] dark:text-white tracking-tight mb-2">
+          <h1 className="text-[28px] font-bold text-slate-900 dark:text-slate-100 tracking-tight mb-1">
             Ticket Operations Center
           </h1>
-          <p className="text-sm text-[#64748B] dark:text-slate-400 mb-6">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
             Triage incoming service requests, monitor live SLA countdowns, and manage your technical workbench.
           </p>
         </div>
@@ -232,34 +232,21 @@ export const TicketQueue = () => {
                 <div
                   key={tkt._id}
                   onClick={() => navigate(`/tickets/${tkt._id}`)}
-                  className="p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-rose-200 dark:border-rose-800/80 shadow-xs hover:border-rose-400 cursor-pointer transition-all space-y-2 group"
+                  className="p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-rose-200 dark:border-rose-800/80 shadow-2xs hover:border-rose-400 cursor-pointer transition-colors duration-150 space-y-2 group"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                    <span className="font-mono-code text-[10px] font-bold text-slate-500 dark:text-slate-400">
                       {tkt.ticketNumber || `TKT-${tkt._id?.substring(0, 4).toUpperCase()}`}
                     </span>
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 ${
-                        sla.color === 'red'
-                          ? 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 animate-pulse'
-                          : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
-                      }`}
-                    >
-                      <Timer className="w-3 h-3" />
-                      <span>{sla.timeString}</span>
+                    <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {sla.timeString}
                     </span>
                   </div>
 
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover:text-purple-600 transition-colors">
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">
                     {tkt.title}
                   </h4>
-
-                  <div className="flex items-center justify-between text-[11px] pt-1 text-slate-400">
-                    <span className="capitalize">{tkt.priority?.toUpperCase()} SLA</span>
-                    <span className="text-purple-600 dark:text-purple-400 font-bold flex items-center gap-0.5">
-                      Work Now <ArrowRight className="w-3 h-3" />
-                    </span>
-                  </div>
                 </div>
               );
             })}
@@ -279,7 +266,7 @@ export const TicketQueue = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left (60%): Open Queue Table */}
           <div className="lg:col-span-7">
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-4">
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white">
@@ -289,14 +276,14 @@ export const TicketQueue = () => {
                     {openTickets.length} request{openTickets.length === 1 ? '' : 's'} awaiting manager triage & SLA assignment
                   </p>
                 </div>
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300">
                   {openTickets.length} Open
                 </span>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
-                  <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold border-b border-slate-200 dark:border-slate-700">
+                  <thead className="bg-slate-50 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-semibold tracking-wider border-b border-slate-200/80 dark:border-slate-800">
                     <tr>
                       <th className="px-4 py-3">Summary / Title</th>
                       <th className="px-3 py-3">Category</th>
@@ -317,14 +304,14 @@ export const TicketQueue = () => {
                         return (
                           <tr
                             key={tkt._id}
-                            className="hover:bg-purple-50/40 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
+                            className="hover:bg-purple-50/40 dark:hover:bg-slate-800/50 transition-colors duration-150 cursor-pointer"
                             onClick={() => navigate(`/tickets/${tkt._id}`)}
                           >
                             <td className="px-4 py-3">
                               <span className="font-bold text-slate-900 dark:text-white block truncate max-w-xs">
                                 {tkt.title}
                               </span>
-                              <span className="font-mono text-[10px] text-purple-600 dark:text-purple-400">
+                              <span className="font-mono-code text-[10px] text-purple-600 dark:text-purple-400">
                                 {tktCode} • {tkt.raisedBy?.email || 'Employee'}
                               </span>
                             </td>

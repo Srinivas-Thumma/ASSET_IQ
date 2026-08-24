@@ -560,10 +560,9 @@ export const Organizations = () => {
                   const planName = org.plan?.name || org.plan?.tier || org.planId || 'Starter';
 
                   return (
-                    <motion.tr
+                    <tr
                       key={org._id}
-                      whileHover={{ y: -1.5, transition: { duration: 0.15 } }}
-                      className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${
+                      className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150 ${
                         isSelected ? 'bg-purple-50/40 dark:bg-purple-950/20' : ''
                       }`}
                     >
@@ -573,7 +572,7 @@ export const Organizations = () => {
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleToggleOrg(org._id)}
-                          className="rounded text-[#6D28D9] focus:ring-[#6D28D9] cursor-pointer"
+                          className="rounded border-slate-300 text-purple-600 focus:ring-purple-500/25 cursor-pointer"
                         />
                       </td>
 
@@ -583,14 +582,14 @@ export const Organizations = () => {
                           className="flex items-center gap-3 cursor-pointer group"
                           onClick={() => navigate(`/admin/organizations/${org._id}`)}
                         >
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6D28D9] to-indigo-600 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs">
                             {(org.name || 'Org').slice(0, 2).toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <span className="font-semibold text-slate-900 dark:text-white block group-hover:text-[#6D28D9] dark:group-hover:text-purple-300 transition-colors truncate max-w-[180px]">
+                            <span className="font-semibold text-slate-900 dark:text-white block group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors truncate max-w-[180px]">
                               {org.name}
                             </span>
-                            <span className="text-[11px] text-slate-400 font-mono block truncate max-w-[180px]">
+                            <span className="text-[11px] text-slate-400 font-mono-code block truncate max-w-[180px]">
                               ID: {org._id.slice(-8)}
                             </span>
                           </div>
@@ -598,7 +597,7 @@ export const Organizations = () => {
                       </td>
 
                       {/* Slug */}
-                      <td className="px-3 py-3 font-mono text-xs text-[#6D28D9] dark:text-purple-400">
+                      <td className="px-3 py-3 font-mono-code text-xs text-purple-600 dark:text-purple-400">
                         {org.slug || '—'}
                       </td>
 
@@ -699,7 +698,7 @@ export const Organizations = () => {
                           ]}
                         />
                       </td>
-                    </motion.tr>
+                    </tr>
                   );
                 })}
               </tbody>
