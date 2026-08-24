@@ -150,7 +150,7 @@ export const Select = ({
   return (
     <div className="w-full relative">
       {label && (
-        <label className="block text-xs font-semibold text-slate-700 dark:text-purple-200 mb-1.5 transition-colors">
+        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5 transition-colors">
           {label} {required && <span className="text-rose-500">*</span>}
         </label>
       )}
@@ -169,21 +169,21 @@ export const Select = ({
         type="button"
         disabled={disabled}
         onClick={handleToggle}
-        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 cursor-pointer shadow-xs text-left
-          bg-white text-slate-800 border border-purple-200/90 hover:border-purple-400
-          focus:outline-none focus:ring-4 focus:ring-purple-500/15 focus:border-purple-600
-          dark:bg-slate-950 dark:text-purple-100 dark:border-purple-900/60 dark:hover:border-purple-500 dark:focus:ring-purple-500/25 dark:focus:border-purple-400
-          ${isOpen ? 'border-purple-500! ring-4 ring-purple-500/15! dark:border-purple-400! dark:ring-purple-500/25!' : ''}
+        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-colors duration-150 cursor-pointer shadow-2xs text-left
+          bg-white text-slate-800 border border-slate-200 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-700
+          focus:outline-none focus:ring-2 focus:ring-purple-500/25 focus:border-purple-600
+          dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-purple-500/25 dark:focus:border-purple-400
+          ${isOpen ? 'border-purple-500! ring-2 ring-purple-500/25! dark:border-purple-400!' : ''}
           ${disabled ? 'opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-900' : ''}
           ${error ? 'border-rose-500! dark:border-rose-500! ring-rose-500/20!' : ''}
           ${className}`}
       >
-        <span className={`truncate ${!selectedOption && placeholder ? 'text-slate-400 dark:text-purple-300/50' : 'text-slate-900 dark:text-purple-50'}`}>
+        <span className={`truncate ${!selectedOption && placeholder ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-slate-100'}`}>
           {displayText}
         </span>
         <ChevronDown
-          className={`w-4 h-4 text-purple-600 dark:text-purple-400 transition-transform duration-200 shrink-0 ml-2 ${
-            isOpen ? 'rotate-180 text-purple-700 dark:text-purple-300' : ''
+          className={`w-4 h-4 text-slate-400 dark:text-slate-400 transition-transform duration-150 shrink-0 ml-2 ${
+            isOpen ? 'rotate-180 text-purple-600 dark:text-purple-400' : ''
           }`}
         />
       </button>
@@ -201,10 +201,9 @@ export const Select = ({
               zIndex: 99999
             }}
             onClick={(e) => e.stopPropagation()}
-            className="rounded-2xl p-1.5 max-h-60 overflow-y-auto shadow-2xl animate-in fade-in zoom-in-95 duration-150
-              bg-white dark:bg-slate-950
-              border border-purple-100 dark:border-purple-900/60
-              shadow-purple-500/10 dark:shadow-purple-950/70"
+            className="rounded-2xl p-1.5 max-h-60 overflow-y-auto shadow-xl transition-all duration-150 origin-top
+              bg-white dark:bg-slate-900
+              border border-slate-200 dark:border-slate-800"
           >
             {placeholder && (
               <div

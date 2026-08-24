@@ -33,13 +33,21 @@ export const runArtifactCleanup = async (options = {}) => {
   console.log(`🔌 Database: ${db.databaseName}`);
   console.log(`⚙️  Mode: ${isDryRun ? 'DRY RUN (No mutations)' : 'EXECUTE (Applying mutations)'}\n`);
 
-  // 1. Identify Test Organizations
+  // 1. Identify Test Organizations & Test Tickets
   const allOrgs = await Organization.find({}).lean();
   const testOrgs = allOrgs.filter(o =>
     /migration-test|p7-test|p8-test|p9-test|hard-org|test-org|test-tenant/i.test(o.name) ||
     /migration-test|p7-test|p8-test|p9-test|hard-org|test-org|test-tenant/i.test(o.slug)
   );
   const testOrgIds = testOrgs.map(o => String(o._id));
+
+  const testTickets = await Ticket.find({
+    $or: [
+      { organizationId: { $in: testOrgIds } },
+      { title: { $regex: /TEST - 01|Hardening Ticket|Procurement: New 4K Monitor|testing 1|Testing - SA|HELP - 2/i } }
+    ]
+  }).lean();
+  const testTicketIds = testTickets.map(t => String(t._id));
 
   // 2. Identify Orphaned Test Request Conversations
   const allReqConvs = await Conversation.find({ contextType: 'request' }).lean();
@@ -51,14 +59,13 @@ export const runArtifactCleanup = async (options = {}) => {
     }
   }
 
-  // 3. Identify Test Messages (linked to test orgs or orphaned test convs)
-  const orphanedConvIds = orphanedReqConvs.map(c => String(c._id));
-  const testMsgs = await Message.find({
-    $or: [
-      { organizationId: { $in: testOrgIds } },
-      { conversationId: { $in: orphanedConvIds } }
-    ]
-  }).lean();
+  // 3. Identify Test & Orphaned Messages
+  const allConvs = await Conversation.find({}).lean();
+  const validConvIds = new Set(allConvs.map(c => String(c._id)));
+  const allMsgs = await Message.find({}).lean();
+  const testMsgs = allMsgs.filter(m =>
+    !validConvIds.has(String(m.conversationId)) || testOrgIds.includes(String(m.organizationId))
+  );
 
   // 4. Summary Report
   console.log('--- CANDIDATE TEST ARTIFACTS CLASSIFIED ---');
@@ -91,10 +98,18 @@ export const runArtifactCleanup = async (options = {}) => {
 
   // Execute Mode Cleanup
   console.log('\n--- EXECUTING TEST ARTIFACT DELETION ---');
+  const orphanedConvIds = orphanedReqConvs.map(c => c._id);
+  const ticketDel = await Ticket.deleteMany({ _id: { $in: testTicketIds } });
   const orgDel = await Organization.deleteMany({ _id: { $in: testOrgIds } });
-  const convDel = await Conversation.deleteMany({ _id: { $in: orphanedConvIds } });
+  const convDel = await Conversation.deleteMany({
+    $or: [
+      { _id: { $in: orphanedConvIds } },
+      { contextType: 'ticket', contextId: { $in: testTicketIds } }
+    ]
+  });
   const msgDel = await Message.deleteMany({ _id: { $in: testMsgs.map(m => m._id) } });
 
+  console.log(`Deleted Test Tickets:           ${ticketDel.deletedCount}`);
   console.log(`Deleted Test Organizations:     ${orgDel.deletedCount}`);
   console.log(`Deleted Orphaned Conversations: ${convDel.deletedCount}`);
   console.log(`Deleted Test Messages:          ${msgDel.deletedCount}`);

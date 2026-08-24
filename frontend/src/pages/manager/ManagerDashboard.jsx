@@ -172,7 +172,7 @@ export const ManagerDashboard = () => {
       </div>
 
       {/* 6 Top KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-5">
         <KpiCard
           title="Open in Triage"
           value={kpis.openTicketsCount}

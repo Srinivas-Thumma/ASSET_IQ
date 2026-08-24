@@ -88,19 +88,18 @@ export const KpiCard = ({
     : '';
 
   return (
-    <motion.div
+    <div
       onClick={onClick}
-      whileHover={onClick ? { y: -2, transition: { duration: 0.15 } } : {}}
       className={cn(
-        'bg-white dark:bg-slate-900 rounded-xl border border-slate-200/90 dark:border-slate-800 p-5 shadow-xs flex flex-col justify-between relative overflow-hidden transition-all duration-200',
-        onClick && 'cursor-pointer hover:shadow-md hover:border-purple-200 dark:hover:border-purple-900',
+        'bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-2xs flex flex-col justify-between relative overflow-hidden transition-colors duration-150',
+        onClick && 'cursor-pointer hover:border-purple-300 dark:hover:border-purple-700',
         className
       )}
     >
       {/* Top row: Icon + optional alert dot */}
       <div className="flex items-center justify-between mb-3">
         {Icon && (
-          <div className="w-10 h-10 rounded-full bg-purple-50 dark:bg-purple-950/60 text-[#6D28D9] dark:text-purple-300 flex items-center justify-center border border-purple-100 dark:border-purple-900/60 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-300 flex items-center justify-center border border-purple-100 dark:border-purple-900/60 shrink-0">
             <Icon className="w-5 h-5" />
           </div>
         )}
@@ -169,7 +168,7 @@ export const KpiCard = ({
           </svg>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 };
 

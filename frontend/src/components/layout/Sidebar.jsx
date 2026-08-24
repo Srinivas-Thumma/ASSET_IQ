@@ -52,20 +52,20 @@ export const Sidebar = () => {
     <aside
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`fixed lg:static top-0 left-0 z-40 h-screen flex-shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-all duration-300 ease-in-out flex flex-col justify-between ${
+      className={`fixed lg:static top-0 left-0 z-40 h-screen flex-shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 transition-all duration-300 ease-in-out flex flex-col justify-between ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       } ${
         isExpanded ? 'w-64 shadow-2xl lg:shadow-none' : 'w-20'
       }`}
     >
       {/* Top Fixed Logo */}
-      <div className={`flex items-center h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 transition-all duration-300 ${
+      <div className={`flex items-center h-16 border-b border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 transition-all duration-300 ${
         isExpanded ? 'px-4 gap-3' : 'px-0 justify-center'
       }`}>
         <img
           src="/logo.png"
           alt="AssetOwl Logo"
-          className="w-9 h-9 rounded-xl object-contain shrink-0 shadow-md shadow-indigo-600/20"
+          className="w-9 h-9 rounded-xl object-contain shrink-0 shadow-xs shadow-purple-600/20"
         />
         <div
           className={`flex items-center gap-1.5 overflow-hidden whitespace-nowrap transition-all duration-300 ${
@@ -75,7 +75,7 @@ export const Sidebar = () => {
           <span className="font-extrabold text-lg text-slate-900 dark:text-slate-100 tracking-tight">
             AssetOwl
           </span>
-          <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400">
+          <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
             v2
           </span>
         </div>

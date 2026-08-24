@@ -14,6 +14,7 @@ import {
 import Button from '../ui/Button.jsx';
 import Badge from '../ui/Badge.jsx';
 import ProgressBar from '../ui/ProgressBar.jsx';
+import LottieLoader from '../ui/LottieLoader.jsx';
 import { formatDate, formatRelative } from '../../utils/formatters.js';
 
 export const AIHealthWidget = ({
@@ -175,7 +176,7 @@ export const AIHealthWidget = ({
             onClick={onAnalyze}
             className="text-xs border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/50"
           >
-            {isAnalyzing ? 'Analyzing...' : 'Re-analyze with AI'}
+            {isAnalyzing ? 'Analyzing...' : 'Analyze with AI'}
           </Button>
         )}
       </div>
@@ -338,6 +339,19 @@ export const AIHealthWidget = ({
           </div>
         </div>
       </div>
+
+      {/* Centered Financial Graph Lottie Animation Overlay */}
+      {isAnalyzing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div className="p-6 bg-white/95 dark:bg-slate-900/95 rounded-3xl shadow-2xl border border-purple-200 dark:border-purple-800/80 pointer-events-auto flex flex-col items-center justify-center">
+            <LottieLoader
+              src="/Financial Graph Loader.lottie"
+              className="w-64 h-64"
+              message="Analyzing Asset Telemetry with AI..."
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

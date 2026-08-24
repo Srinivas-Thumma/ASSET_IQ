@@ -11,6 +11,7 @@ dotenv.config({
 });
 
 import { MONGODB_URI } from './config/env.js';
+import { runArtifactCleanup } from './scripts/clean_test_artifacts.js';
 import conversationService from './services/conversation.service.js';
 import requestService from './services/request.service.js';
 import ticketService from './services/ticket.service.js';
@@ -145,6 +146,7 @@ const testPhase7 = async () => {
     await Conversation.deleteMany({ organizationId: org._id });
     await Message.deleteMany({ organizationId: org._id });
     await Organization.deleteMany({ _id: org._id });
+    await runArtifactCleanup({ isExecute: true });
 
     console.log('\n======================================================');
     console.log(`📊 PHASE 7 TEST RESULTS: ${passed} PASSED, ${failed} FAILED`);

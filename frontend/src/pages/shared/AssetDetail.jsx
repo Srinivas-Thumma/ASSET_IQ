@@ -338,7 +338,7 @@ export const AssetDetail = () => {
 
             <div>
               <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                <span className="font-mono text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/70 px-2.5 py-0.5 rounded-[6px] border border-purple-200/80 dark:border-purple-800">
+                <span className="font-mono-code text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/70 px-2.5 py-0.5 rounded-[6px] border border-purple-200/80 dark:border-purple-800">
                   {asset.assetCode}
                 </span>
                 <Badge variant={asset.status}>

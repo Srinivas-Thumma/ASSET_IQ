@@ -44,9 +44,9 @@ export const Card = ({
       ref={cardRef}
       onClick={onClick}
       className={cn(
-        'bg-white dark:bg-slate-900 rounded-xl border border-slate-200/90 dark:border-slate-800 shadow-xs p-6 transition-all duration-200',
+        'bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs p-6 transition-colors duration-150',
         alert && 'border-amber-400/60 dark:border-amber-500/50',
-        shouldLift && 'hover:shadow-md hover:-translate-y-0.5 hover:border-purple-200 dark:hover:border-purple-900 cursor-pointer',
+        shouldLift && 'hover:border-purple-300 dark:hover:border-purple-700 cursor-pointer',
         className
       )}
       {...props}

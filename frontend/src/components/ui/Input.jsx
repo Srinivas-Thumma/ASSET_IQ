@@ -38,9 +38,9 @@ export const Input = forwardRef(
             type={type}
             placeholder={placeholder}
             className={cn(
-              'w-full h-10 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#6D28D9] focus:border-transparent transition-all shadow-xs',
-              Icon && 'pl-9',
-              error && 'border-rose-500 focus:ring-rose-500 focus:border-rose-500',
+              'w-full h-10 px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/25 focus:border-purple-600 dark:focus:border-purple-400 transition-colors shadow-2xs',
+              Icon && 'pl-9.5',
+              error && 'border-rose-500! focus:ring-rose-500/30! focus:border-rose-500!',
               className
             )}
             {...registerProps}

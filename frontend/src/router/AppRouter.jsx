@@ -16,6 +16,8 @@ const Login = lazy(() => import('../pages/shared/Login.jsx'));
 const AssetDetail = lazy(() => import('../pages/shared/AssetDetail.jsx'));
 const Warranties = lazy(() => import('../pages/shared/Warranties.jsx'));
 const TicketRouteDispatcher = lazy(() => import('../components/tickets/TicketRouteDispatcher.jsx'));
+const RequestDetail = lazy(() => import('../pages/shared/RequestDetail.jsx'));
+const ConversationDetail = lazy(() => import('../pages/shared/ConversationDetail.jsx'));
 
 // Employee Pages
 const MyAssets = lazy(() => import('../pages/employee/MyAssets.jsx'));
@@ -131,6 +133,8 @@ export const AppRouter = () => {
             <Route path="/warranties" element={<Warranties />} />
             <Route path="/ticket/:id" element={<TicketRouteDispatcher />} />
             <Route path="/tickets/:id" element={<TicketRouteDispatcher />} />
+            <Route path="/requests/:id" element={<RequestDetail />} />
+            <Route path="/conversations/:id" element={<ConversationDetail />} />
 
             {/* Employee */}
             <Route path="/my-assets" element={<MyAssets />} />

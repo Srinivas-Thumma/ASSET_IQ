@@ -102,7 +102,7 @@ export const Dashboard = () => {
       </div>
 
       {/* TOP ROW: 4 KPI CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <KpiCard
           title="Pending Procurement"
           value={isStatsLoading ? '...' : stats?.pendingProcurement || 0}
@@ -151,7 +151,7 @@ export const Dashboard = () => {
       <Card className="p-0 overflow-hidden" hoverLift={false}>
         <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950 text-[#6D28D9] dark:text-purple-300">
+            <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-300 border border-purple-100 dark:border-purple-900/40">
               <Clock className="w-4 h-4" />
             </div>
             <div>
@@ -179,14 +179,14 @@ export const Dashboard = () => {
               {approvals.map((item) => (
                 <div
                   key={item._id}
-                  className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 px-3 rounded-xl transition-colors"
+                  className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 px-3 rounded-xl transition-colors duration-150"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <Badge variant={item.type === 'procurement' ? 'purple' : 'warning'}>
                         {item.type === 'procurement' ? 'Procurement Request' : 'Decommission Request'}
                       </Badge>
-                      <span className="text-xs text-slate-400 font-mono">
+                      <span className="text-xs text-slate-400 font-mono-code">
                         {item.code || `ID-${item._id.slice(-4)}`}
                       </span>
                     </div>

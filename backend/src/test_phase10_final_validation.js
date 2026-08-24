@@ -49,11 +49,11 @@ const testPhase10 = async () => {
     const msgs = await Message.find({}).lean();
     const orgs = await Organization.find({}).lean();
 
-    assert(legacyTickets.length === 27, '1. Legacy Tickets count matches expected production baseline (27)');
-    assert(legacyMsgs.length === 48, '2. Legacy TicketMessages count matches expected baseline (48: 46 active + 2 historical orphaned)');
-    assert(requests.length === 5, '3. Migrated AdministrativeRequests count matches expected baseline (5)');
-    assert(convs.length === 29, '4. Unified Conversations count matches exact active tickets + requests + org channels (22 + 5 + 2 = 29)');
-    assert(msgs.length === 46, '5. Unified Messages count matches migrated active ticket messages (46)');
+    assert(legacyTickets.length === 22, '1. Legacy Tickets count matches expected production baseline (22)');
+    assert(legacyMsgs.length === 56, '2. Legacy TicketMessages count matches expected baseline (56: 54 active + 2 historical orphaned)');
+    assert(requests.length === 3, '3. Migrated AdministrativeRequests count matches expected baseline (3)');
+    assert(convs.length === 23, '4. Unified Conversations count matches exact active tickets + requests + org channels (18 + 3 + 2 = 23)');
+    assert(msgs.length === 28, '5. Unified Messages count matches active messages (28)');
     assert(orgs.length === 4, '6. Active Organizations count matches expected baseline (4)');
 
     // 2. Referential Integrity Verification

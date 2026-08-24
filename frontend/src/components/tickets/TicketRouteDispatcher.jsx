@@ -2,11 +2,13 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import ticketApi from '../../api/ticket.api.js';
+import { requestApi } from '../../api/request.api.js';
 import { useAuthStore } from '../../stores/auth.store.js';
 import TicketDetail from '../../pages/employee/TicketDetail.jsx';
 import TicketWork from '../../pages/manager/TicketWork.jsx';
 import SuperAdminTicketView from './SuperAdminTicketView.jsx';
 import PlatformSupportTicketView from './PlatformSupportTicketView.jsx';
+import RequestDetail from '../../pages/shared/RequestDetail.jsx';
 import NotFound404 from '../ui/NotFound404.jsx';
 import LottieLoader from '../ui/LottieLoader.jsx';
 
@@ -14,21 +16,44 @@ export const TicketRouteDispatcher = () => {
   const { id } = useParams();
   const { user } = useAuthStore();
 
-  const { data: ticket, isLoading } = useQuery({
+  const { data: ticket, isLoading: isTicketLoading } = useQuery({
     queryKey: ['ticket', id],
-    queryFn: () => (ticketApi.getTicketById ? ticketApi.getTicketById(id) : ticketApi.getTicket(id)),
+    queryFn: async () => {
+      try {
+        return await (ticketApi.getTicketById ? ticketApi.getTicketById(id) : ticketApi.getTicket(id));
+      } catch (err) {
+        return null;
+      }
+    },
     enabled: Boolean(id)
   });
 
-  if (isLoading) {
+  const { data: request, isLoading: isRequestLoading } = useQuery({
+    queryKey: ['request', id],
+    queryFn: async () => {
+      try {
+        return await requestApi.getRequestById(id);
+      } catch (err) {
+        return null;
+      }
+    },
+    enabled: Boolean(id) && !ticket && !isTicketLoading
+  });
+
+  if (isTicketLoading || (isRequestLoading && !ticket)) {
     return (
       <LottieLoader
         src="/Loading 52 _ Mario.lottie"
         className="w-44 h-44"
-        message="Loading Support Ticket Case..."
+        message="Loading Case Details..."
         fullPage
       />
     );
+  }
+
+  // If found as an AdministrativeRequest, render RequestDetail
+  if (!ticket && request) {
+    return <RequestDetail />;
   }
 
   if (!ticket) {
