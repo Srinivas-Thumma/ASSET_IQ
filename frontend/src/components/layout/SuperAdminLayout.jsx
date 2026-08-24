@@ -324,7 +324,7 @@ export const SuperAdminLayout = () => {
       {/* Main Admin Body with Optional Activity Right Panel */}
       <div className="flex-1 flex overflow-hidden">
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-6 max-w-7xl mx-auto w-full">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-6 max-w-7xl mx-auto w-full font-poppins">
           <PageWrapper pageId={location.pathname}>
             <Outlet />
           </PageWrapper>
