@@ -48,7 +48,7 @@ export const LottieLoader = ({
         ) : (
           <LottieErrorBoundary fallback={fallbackSpinner}>
             <DotLottieReact
-              src={src}
+              src={src ? encodeURI(src) : src}
               loop={loop}
               autoplay={autoplay}
               onError={() => setLoadError(true)}

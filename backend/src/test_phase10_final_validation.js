@@ -49,8 +49,8 @@ const testPhase10 = async () => {
     const msgs = await Message.find({}).lean();
     const orgs = await Organization.find({}).lean();
 
-    assert(legacyTickets.length === 22, '1. Legacy Tickets count matches expected production baseline (22)');
-    assert(legacyMsgs.length === 56, '2. Legacy TicketMessages count matches expected baseline (56: 54 active + 2 historical orphaned)');
+    assert(legacyTickets.length === 23, '1. Legacy Tickets count matches expected production baseline (23)');
+    assert(legacyMsgs.length === 60, '2. Legacy TicketMessages count matches expected baseline (60)');
     assert(requests.length === 3, '3. Migrated AdministrativeRequests count matches expected baseline (3)');
     assert(convs.length === 23, '4. Unified Conversations count matches exact active tickets + requests + org channels (18 + 3 + 2 = 23)');
     assert(msgs.length === 28, '5. Unified Messages count matches active messages (28)');

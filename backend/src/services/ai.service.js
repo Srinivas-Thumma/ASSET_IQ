@@ -75,18 +75,24 @@ export const getAvailableOllamaModel = async () => {
 /**
  * Gather all intelligence about an asset for the LLM
  */
-export const gatherAssetContext = async (assetId, organizationId) => {
-  const asset = await Asset.findOne({ _id: assetId, organizationId })
+export const gatherAssetContext = async (assetId, organizationId, user) => {
+  const query = (organizationId && user?.role !== 'super_admin')
+    ? { _id: assetId, organizationId }
+    : { _id: assetId };
+
+  const asset = await Asset.findOne(query)
     .populate('categoryId', 'name expectedLifespanMonths')
     .populate('vendorId', 'name')
     .populate('locationId', 'name');
 
   if (!asset) throw new ApiError(404, 'Asset not found');
 
+  const effectiveOrgId = asset.organizationId || organizationId;
+
   // Query all tickets related to this asset
   const tickets = await Ticket.find({
     assetId,
-    organizationId
+    organizationId: effectiveOrgId
   }).sort({ createdAt: -1 });
 
   const repairTickets = tickets.filter((t) => t.type === 'repair' || t.issueType === 'hardware');
@@ -96,12 +102,12 @@ export const gatherAssetContext = async (assetId, organizationId) => {
   const lastRepair = resolvedRepairs[0] || repairTickets[0];
 
   // Assignment history
-  const assignments = await Assignment.find({ assetId, organizationId })
+  const assignments = await Assignment.find({ assetId, organizationId: effectiveOrgId })
     .populate('employeeId', 'firstName lastName')
     .sort({ assignedAt: -1 });
 
   // Warranty
-  const warranty = await Warranty.findOne({ assetId, organizationId }).sort({ endDate: -1 });
+  const warranty = await Warranty.findOne({ assetId, organizationId: effectiveOrgId }).sort({ endDate: -1 });
 
   // Age calculation
   const ageInMonths = asset.purchaseDate 
@@ -347,7 +353,7 @@ export const parseAIResponse = (rawText, fallbackContext) => {
  */
 export const analyzeAssetHealth = async (assetId, organizationId, user, options = {}) => {
   const { force = false, cooldownMinutes = 15 } = options;
-  const { asset, context } = await gatherAssetContext(assetId, organizationId);
+  const { asset, context } = await gatherAssetContext(assetId, organizationId, user);
 
   // Check analysis cache & cooldown (only if not forced and asset has already been analyzed with a non-null health score)
   if (!force && asset.ai?.lastAnalyzedAt && typeof asset.ai?.healthScore === 'number') {
