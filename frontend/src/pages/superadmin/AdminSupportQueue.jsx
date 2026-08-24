@@ -217,16 +217,20 @@ export const AdminSupportQueue = () => {
                       <td className="px-4 py-3.5">
                         <Badge
                           variant={
-                            tkt.status === 'resolved' || tkt.status === 'closed'
-                              ? 'resolved'
+                            tkt.status === 'resolved'
+                              ? 'emerald'
+                              : tkt.status === 'closed'
+                              ? 'slate'
                               : tkt.status === 'in_progress' || tkt.status === 'claimed'
-                              ? 'indigo'
-                              : 'warning'
+                              ? 'orange'
+                              : 'blue'
                           }
                           dot
                         >
-                          {tkt.status === 'resolved' || tkt.status === 'closed'
+                          {tkt.status === 'resolved'
                             ? 'Resolved'
+                            : tkt.status === 'closed'
+                            ? 'Closed'
                             : tkt.status === 'in_progress' || tkt.status === 'claimed'
                             ? 'In Progress'
                             : 'Open'}

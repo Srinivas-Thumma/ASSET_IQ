@@ -480,9 +480,9 @@ export const OrganizationDetail = () => {
                       <td className="px-4 py-3 capitalize text-slate-500">
                         {tkt.issueType}
                       </td>
-                      <td className="px-4 py-3 capitalize">
-                        <Badge variant={tkt.status === 'resolved' ? 'emerald' : tkt.status === 'claimed' ? 'indigo' : 'blue'}>
-                          {tkt.status}
+                      <td className="px-4 py-3 capitalize font-bold">
+                        <Badge variant={tkt.status === 'resolved' ? 'emerald' : tkt.status === 'closed' ? 'slate' : (tkt.status === 'in_progress' || tkt.status === 'claimed' || tkt.status === 'inprogress') ? 'orange' : 'blue'}>
+                          {tkt.status ? tkt.status.replace('_', ' ') : 'open'}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
