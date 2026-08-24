@@ -424,8 +424,10 @@ export const OrganizationDetail = () => {
                       <td className="px-4 py-3 text-slate-500 font-mono">
                         {emp.email}
                       </td>
-                      <td className="px-4 py-3 capitalize text-purple-600 dark:text-purple-400 font-bold">
-                        {emp.role.replace('_', ' ')}
+                      <td className="px-4 py-3 font-bold">
+                        <Badge variant={emp.role === 'org_admin' ? 'purple' : emp.role === 'asset_manager' ? 'blue' : 'slate'}>
+                          {emp.role === 'org_admin' ? 'Org Admin' : emp.role === 'asset_manager' ? 'Asset Manager' : emp.role === 'super_admin' ? 'Super Admin' : 'Employee'}
+                        </Badge>
                       </td>
                       <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
                         {emp.department}

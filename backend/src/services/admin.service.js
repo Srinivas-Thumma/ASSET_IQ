@@ -114,7 +114,7 @@ export const getOrganizationById = async (orgId) => {
   const org = await Organization.findById(orgId).lean();
   if (!org) throw new ApiError(404, 'Organization not found');
 
-  const [plans, assets, employees, tickets, auditLogs] = await Promise.all([
+  const [plans, assets, employees, users, tickets, auditLogs] = await Promise.all([
     getPlans(),
     Asset.find({ organizationId: orgId })
       .populate('categoryId', 'name')
@@ -125,6 +125,9 @@ export const getOrganizationById = async (orgId) => {
     Employee.find({ organizationId: orgId })
       .populate('departmentId', 'name')
       .sort({ createdAt: -1 })
+      .lean(),
+    User.find({ organizationId: orgId })
+      .select('-passwordHash')
       .lean(),
     Ticket.find({ organizationId: orgId })
       .populate('raisedBy', 'email name')
@@ -146,8 +149,49 @@ export const getOrganizationById = async (orgId) => {
     features: ['Basic Asset Tracking', 'QR Codes', 'Email Support']
   };
 
+  const userByEmailMap = new Map();
+  const userByEmpRefMap = new Map();
+  users.forEach((u) => {
+    if (u.email) userByEmailMap.set(u.email.toLowerCase(), u);
+    if (u.employeeRef) userByEmpRefMap.set(String(u.employeeRef), u);
+  });
+
+  const mappedEmployees = employees.map((e) => {
+    const matchedUser = userByEmpRefMap.get(String(e._id)) || userByEmailMap.get(e.email?.toLowerCase());
+    const role = matchedUser?.role || e.role || 'employee';
+
+    return {
+      _id: e._id,
+      name: `${e.firstName || ''} ${e.lastName || ''}`.trim() || e.name || 'Staff Member',
+      email: e.email,
+      role: role,
+      department: e.departmentId?.name || 'Operations',
+      assignedAssetsCount: assets.filter((a) => a.currentAssignment?.employeeId?.toString() === e._id.toString()).length,
+      ticketsRaisedCount: tickets.filter((t) => t.raisedBy?._id?.toString() === e._id.toString() || t.raisedBy?.email === e.email).length,
+      createdAt: e.createdAt
+    };
+  });
+
+  users.forEach((u) => {
+    const isAlreadyIncluded = mappedEmployees.some(
+      (m) => m.email?.toLowerCase() === u.email?.toLowerCase() || String(m._id) === String(u.employeeRef)
+    );
+    if (!isAlreadyIncluded) {
+      mappedEmployees.push({
+        _id: u._id,
+        name: u.name || (u.email ? u.email.split('@')[0] : 'User Account'),
+        email: u.email,
+        role: u.role || 'employee',
+        department: u.role === 'org_admin' ? 'Administration' : u.role === 'asset_manager' ? 'IT Management' : 'General',
+        assignedAssetsCount: 0,
+        ticketsRaisedCount: tickets.filter((t) => t.raisedBy?._id?.toString() === u._id.toString() || t.raisedBy?.email === u.email).length,
+        createdAt: u.createdAt
+      });
+    }
+  });
+
   const totalAssets = assets.length;
-  const totalEmployees = employees.length;
+  const totalEmployees = mappedEmployees.length;
   const openTickets = tickets.filter((t) => ['open', 'claimed', 'in_progress'].includes(t.status)).length;
   
   const avgFleetHealth = totalAssets > 0
@@ -206,16 +250,7 @@ export const getOrganizationById = async (orgId) => {
       purchaseDate: a.purchaseDate,
       warrantyEndDate: a.warrantyEndDate
     })),
-    employees: employees.map((e) => ({
-      _id: e._id,
-      name: `${e.firstName || ''} ${e.lastName || ''}`.trim() || e.name || 'Staff Member',
-      email: e.email,
-      role: e.role || 'employee',
-      department: e.departmentId?.name || 'Operations',
-      assignedAssetsCount: assets.filter((a) => a.currentAssignment?.employeeId?.toString() === e._id.toString()).length,
-      ticketsRaisedCount: tickets.filter((t) => t.raisedBy?._id?.toString() === e._id.toString() || t.raisedBy?.email === e.email).length,
-      createdAt: e.createdAt
-    })),
+    employees: mappedEmployees,
     tickets: tickets.map((t) => ({
       _id: t._id,
       ticketCode: t.ticketCode || `TKT-${t._id.toString().slice(-4)}`,
