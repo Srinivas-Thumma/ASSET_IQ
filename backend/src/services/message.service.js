@@ -83,34 +83,86 @@ export const createMessage = async (ticketIdOrData, dataOrUser, userOrNone) => {
   // Real-time broadcast to ticket room
   emitToTicket(data.ticketId, 'new-message', message);
 
-  // Notification routing for platform support tickets
-  if (ticket.type === 'admin_support') {
-    if (user.role === 'super_admin') {
-      // SuperAdmin replied -> Notify Org Admin requester
-      if (ticket.raisedBy) {
-        await createNotification({
-          userId: ticket.raisedBy,
-          organizationId: ticket.organizationId,
-          type: 'admin_support_reply',
-          title: 'Platform Support Reply',
-          message: `SuperAdmin replied to support request "${ticket.title}".`,
-          relatedId: ticket._id,
-          relatedType: 'ticket'
-        });
+  // Notification routing for chat replies
+  if (!data.isInternal) {
+    const raiserId = String(ticket.raisedBy?._id || ticket.raisedBy || '');
+    const senderId = String(user._id || '');
+
+    if (ticket.type === 'admin_support') {
+      if (user.role === 'super_admin') {
+        if (raiserId && raiserId !== senderId) {
+          await createNotification({
+            userId: raiserId,
+            organizationId: ticket.organizationId,
+            type: 'admin_support_reply',
+            title: 'Platform Support Reply',
+            message: `SuperAdmin replied to support request "${ticket.title}".`,
+            relatedId: ticket._id,
+            relatedType: 'ticket'
+          });
+        }
+      } else {
+        const superAdmins = await User.find({ role: 'super_admin', status: 'active' }).select('_id').lean();
+        for (const sa of superAdmins) {
+          if (String(sa._id) !== senderId) {
+            await createNotification({
+              userId: sa._id,
+              organizationId: ticket.organizationId,
+              type: 'admin_support_reply',
+              title: 'Platform Support Reply',
+              message: `${senderName} replied to platform support request "${ticket.title}".`,
+              relatedId: ticket._id,
+              relatedType: 'ticket'
+            });
+          }
+        }
       }
     } else {
-      // Org Admin replied -> Notify SuperAdmin(s)
-      const superAdmins = await User.find({ role: 'super_admin', status: 'active' }).select('_id').lean();
-      for (const sa of superAdmins) {
+      // Standard operational tickets (repair, request, return, support)
+      if (senderId !== raiserId && raiserId) {
+        // Non-raiser (Asset Manager / Admin) replied -> Notify original ticket raiser (Employee)
         await createNotification({
-          userId: sa._id,
+          userId: raiserId,
           organizationId: ticket.organizationId,
-          type: 'admin_support_reply',
-          title: 'Platform Support Reply',
-          message: `${senderName} replied to platform support request "${ticket.title}".`,
+          type: 'ticket_created',
+          title: 'New Reply on Ticket',
+          message: `${senderName} replied to your ticket "${ticket.title}".`,
           relatedId: ticket._id,
           relatedType: 'ticket'
         });
+      } else if (senderId === raiserId) {
+        // Raiser (Employee) replied -> Notify assigned handler or asset managers
+        const handlerId = String(ticket.handler?._id || ticket.handler || '');
+        if (handlerId && handlerId !== senderId) {
+          await createNotification({
+            userId: handlerId,
+            organizationId: ticket.organizationId,
+            type: 'ticket_created',
+            title: 'New Reply from Employee',
+            message: `${senderName} replied to ticket "${ticket.title}".`,
+            relatedId: ticket._id,
+            relatedType: 'ticket'
+          });
+        } else {
+          const managers = await User.find({
+            organizationId: ticket.organizationId,
+            role: 'asset_manager',
+            status: 'active',
+            _id: { $ne: user._id }
+          }).select('_id').lean();
+
+          for (const mgr of managers) {
+            await createNotification({
+              userId: mgr._id,
+              organizationId: ticket.organizationId,
+              type: 'ticket_created',
+              title: 'New Reply on Ticket',
+              message: `${senderName} replied to ticket "${ticket.title}".`,
+              relatedId: ticket._id,
+              relatedType: 'ticket'
+            });
+          }
+        }
       }
     }
   }
