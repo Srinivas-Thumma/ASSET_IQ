@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
 import {
   Plus,
+  User,
   UserPlus,
   Edit,
   Boxes,
@@ -408,8 +409,17 @@ export const AssetInventory = () => {
                       <td className="px-3 py-3.5 text-slate-600 dark:text-slate-300">
                         {asset.categoryId?.name || asset.categoryName || 'Hardware'}
                       </td>
-                      <td className="px-3 py-3.5">
-                        {asset.currentAssignment?.employeeName || (asset.status === 'assigned' ? 'Assigned Custody' : 'In Stock')}
+                      <td className="px-3 py-3.5 font-medium text-slate-800 dark:text-slate-200">
+                        {asset.currentAssignment?.employeeName ? (
+                          <span className="flex items-center gap-1.5 text-purple-700 dark:text-purple-300 font-semibold">
+                            <User className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                            <span>{asset.currentAssignment.employeeName}</span>
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 dark:text-slate-500 text-xs">
+                            {asset.status === 'assigned' ? 'Assigned' : 'In Stock'}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-3.5">
                         <HealthScoreBadge score={score} size="sm" />

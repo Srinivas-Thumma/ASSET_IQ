@@ -83,7 +83,7 @@ export const createAsset = async (data, user) => {
 
 export const getAssets = async (organizationId, filters = {}) => {
   const { page, limit, search, status, categoryId, locationId, vendorId } = filters;
-  const query = { organizationId };
+  const query = organizationId ? { organizationId } : {};
 
   if (status) query.status = status;
   if (categoryId) query.categoryId = categoryId;
@@ -96,12 +96,51 @@ export const getAssets = async (organizationId, filters = {}) => {
     ];
   }
 
+  const attachActiveAssignments = async (assetList) => {
+    if (!assetList || assetList.length === 0) return assetList;
+
+    const assetIds = assetList.map((a) => a._id);
+    const activeAssignments = await Assignment.find({
+      assetId: { $in: assetIds },
+      returnedAt: null
+    })
+      .populate('employeeId', 'firstName lastName email')
+      .lean();
+
+    const assignmentMap = new Map();
+    for (const assign of activeAssignments) {
+      const emp = assign.employeeId;
+      let empName = null;
+      if (emp) {
+        if (typeof emp === 'object') {
+          const fn = emp.firstName || '';
+          const ln = emp.lastName || '';
+          empName = `${fn} ${ln}`.trim() || emp.email;
+        } else if (typeof emp === 'string') {
+          empName = emp;
+        }
+      }
+      assignmentMap.set(String(assign.assetId), {
+        ...assign,
+        employeeName: empName || 'Assigned Employee'
+      });
+    }
+
+    return assetList.map((asset) => {
+      const currentAssignment = assignmentMap.get(String(asset._id)) || null;
+      return {
+        ...asset,
+        currentAssignment
+      };
+    });
+  };
+
   if (page !== undefined || limit !== undefined) {
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
     const skip = (pageNum - 1) * limitNum;
 
-    const [items, total] = await Promise.all([
+    const [rawItems, total] = await Promise.all([
       Asset.find(query)
         .populate('categoryId', 'name expectedLifespanMonths')
         .populate('vendorId', 'name')
@@ -112,6 +151,8 @@ export const getAssets = async (organizationId, filters = {}) => {
         .lean(),
       Asset.countDocuments(query)
     ]);
+
+    const items = await attachActiveAssignments(rawItems);
 
     return {
       items,
@@ -124,12 +165,14 @@ export const getAssets = async (organizationId, filters = {}) => {
     };
   }
 
-  return await Asset.find(query)
+  const rawAssets = await Asset.find(query)
     .populate('categoryId', 'name expectedLifespanMonths')
     .populate('vendorId', 'name')
     .populate('locationId', 'name path type')
     .sort({ createdAt: -1 })
     .lean();
+
+  return await attachActiveAssignments(rawAssets);
 };
 
 export const getAssetById = async (id, organizationId) => {
