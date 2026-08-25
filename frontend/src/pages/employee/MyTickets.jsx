@@ -152,18 +152,63 @@ export const MyTickets = () => {
           <Skeleton variant="rectangular" className="h-28 rounded-2xl" />
           <Skeleton variant="rectangular" className="h-28 rounded-2xl" />
         </div>
+      ) : myTickets.length === 0 ? (
+        <div className="p-8 sm:p-12 text-center flex flex-col items-center justify-center rounded-2xl border border-dashed border-purple-200 dark:border-purple-900/50 bg-purple-50/30 dark:bg-purple-950/10 space-y-6 mt-4">
+          <div className="w-16 h-16 rounded-2xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300 flex items-center justify-center shadow-sm border border-purple-200 dark:border-purple-800">
+            <TicketIcon className="w-8 h-8" />
+          </div>
+
+          <div className="max-w-md space-y-2">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+              No Support Tickets Yet
+            </h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              Need technical assistance, hardware repairs, or a replacement for an assigned asset?
+              Submit a ticket to connect directly with your IT asset manager.
+            </p>
+          </div>
+
+          {/* Feature Highlight Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-lg text-left">
+            <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-start gap-2.5">
+              <Laptop className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-[11px] font-bold text-slate-800 dark:text-slate-200">Hardware Repairs</h4>
+                <p className="text-[10px] text-slate-500">Report broken hardware & request swaps</p>
+              </div>
+            </div>
+            <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-start gap-2.5">
+              <MessageSquare className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-[11px] font-bold text-slate-800 dark:text-slate-200">Direct Discussion</h4>
+                <p className="text-[10px] text-slate-500">Chat in real-time with IT specialists</p>
+              </div>
+            </div>
+            <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-start gap-2.5">
+              <Clock className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-[11px] font-bold text-slate-800 dark:text-slate-200">SLA Guarantees</h4>
+                <p className="text-[10px] text-slate-500">Track resolution priority & progress</p>
+              </div>
+            </div>
+          </div>
+
+          <Button
+            variant="primary"
+            icon={Plus}
+            onClick={() => setIsModalOpen(true)}
+            className="text-xs h-10 px-6 bg-[#6D28D9] hover:bg-purple-700 shadow-md shadow-purple-600/20"
+          >
+            Raise Your First Ticket
+          </Button>
+        </div>
       ) : filteredTickets.length === 0 ? (
         <EmptyState
-          icon={TicketIcon}
-          title={filterStatus === 'all' ? 'No tickets yet' : `No ${filterStatus.replace('_', ' ')} tickets`}
-          description={
-            filterStatus === 'all'
-              ? "You're all caught up! If something breaks or you need equipment assistance, raise your first ticket."
-              : `There are currently no tickets matching the "${filterStatus}" status filter.`
-          }
-          actionLabel="Raise Ticket"
-          actionIcon={Plus}
-          onAction={() => setIsModalOpen(true)}
+          icon={Filter}
+          title={`No ${filterStatus.replace('_', ' ')} tickets`}
+          description={`There are currently no tickets matching the "${filterStatus}" status filter.`}
+          actionLabel="Clear Filter"
+          onAction={() => setFilterStatus('all')}
           className="mt-6"
         />
       ) : (
