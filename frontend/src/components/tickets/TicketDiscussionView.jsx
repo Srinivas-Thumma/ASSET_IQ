@@ -22,6 +22,7 @@ import {
   SlidersHorizontal,
   ExternalLink,
   MessageSquare,
+  HelpCircle,
   Tag,
   Hash
 } from 'lucide-react';
@@ -729,7 +730,7 @@ export const TicketDiscussionView = () => {
       {showRightPanel && (
         <aside className="w-full lg:w-72 shrink-0 flex flex-col gap-4 overflow-y-auto">
           {/* Hardware Specs Card */}
-          {ticket.assetId && (
+          {ticket.assetId ? (
             <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-3.5">
               <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -763,6 +764,31 @@ export const TicketDiscussionView = () => {
                 <span>View Hardware Specs</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </button>
+            </div>
+          ) : (
+            <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-2.5">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Asset Linkage
+                </span>
+                <span className="text-[10px] text-slate-500 font-semibold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                  General Inquiry
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700 flex items-center justify-center text-slate-400 shrink-0">
+                  <HelpCircle className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                    No Linked Hardware
+                  </h4>
+                  <span className="text-[11px] text-slate-400 block">
+                    General support request
+                  </span>
+                </div>
+              </div>
             </div>
           )}
 

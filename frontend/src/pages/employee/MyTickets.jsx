@@ -10,6 +10,7 @@ import {
   Filter,
   Laptop,
   MessageSquare,
+  HelpCircle,
   Ticket as TicketIcon
 } from 'lucide-react';
 import Button from '../../components/ui/Button.jsx';
@@ -205,10 +206,15 @@ export const MyTickets = () => {
                 {/* Bottom Metadata */}
                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
                   <div className="flex items-center gap-4 flex-wrap">
-                    {relatedAssetName && (
+                    {relatedAssetName ? (
                       <span className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-semibold bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-200/60 dark:border-slate-700 text-[11px]">
                         <Laptop className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                         <span>{relatedAssetName}</span>
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-medium bg-slate-100/70 dark:bg-slate-800/50 px-2 py-0.5 rounded-lg border border-slate-200/50 dark:border-slate-800 text-[11px]">
+                        <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
+                        <span>General Inquiry</span>
                       </span>
                     )}
 
