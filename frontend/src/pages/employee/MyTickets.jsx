@@ -19,6 +19,7 @@ import Card from '../../components/ui/Card.jsx';
 import Skeleton from '../../components/ui/Skeleton.jsx';
 import EmptyState from '../../components/ui/EmptyState.jsx';
 import RaiseTicketModal from '../../components/modals/RaiseTicketModal.jsx';
+import { useAuthStore } from '../../stores/auth.store.js';
 import { useTickets } from '../../hooks/useTickets.js';
 import { useAssets } from '../../hooks/useAssets.js';
 import { useNotifications } from '../../hooks/useNotifications.js';
@@ -26,6 +27,7 @@ import { formatDate, formatRelative } from '../../utils/formatters.js';
 
 export const MyTickets = () => {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const { myTickets, isMyTicketsLoading } = useTickets();
   const { myAssets } = useAssets();
   const { notifications } = useNotifications();
@@ -33,22 +35,32 @@ export const MyTickets = () => {
   const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'open' | 'in_progress' | 'resolved' | 'closed'
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Strict User Scoping: Filter tickets raised strictly by the logged-in employee
+  const ownTickets = useMemo(() => {
+    if (!myTickets) return [];
+    if (!user?._id) return myTickets;
+    return myTickets.filter((t) => {
+      const raiserId = String(t.raisedBy?._id || t.raisedBy || '');
+      return raiserId === String(user._id);
+    });
+  }, [myTickets, user?._id]);
+
   // Filtered Tickets
   const filteredTickets = useMemo(() => {
-    if (!myTickets) return [];
-    if (filterStatus === 'all') return myTickets;
-    if (filterStatus === 'open') return myTickets.filter((t) => t.status === 'open' || t.status === 'claimed');
-    return myTickets.filter((t) => t.status === filterStatus);
-  }, [myTickets, filterStatus]);
+    if (!ownTickets) return [];
+    if (filterStatus === 'all') return ownTickets;
+    if (filterStatus === 'open') return ownTickets.filter((t) => t.status === 'open' || t.status === 'claimed');
+    return ownTickets.filter((t) => t.status === filterStatus);
+  }, [ownTickets, filterStatus]);
 
   // Counts for filter pills
   const counts = useMemo(() => {
-    const total = myTickets?.length || 0;
-    const open = myTickets?.filter((t) => t.status === 'open' || t.status === 'claimed').length || 0;
-    const inProgress = myTickets?.filter((t) => t.status === 'in_progress').length || 0;
-    const resolved = myTickets?.filter((t) => t.status === 'resolved' || t.status === 'closed').length || 0;
+    const total = ownTickets?.length || 0;
+    const open = ownTickets?.filter((t) => t.status === 'open' || t.status === 'claimed').length || 0;
+    const inProgress = ownTickets?.filter((t) => t.status === 'in_progress').length || 0;
+    const resolved = ownTickets?.filter((t) => t.status === 'resolved' || t.status === 'closed').length || 0;
     return { total, open, inProgress, resolved };
-  }, [myTickets]);
+  }, [ownTickets]);
 
   const getPriorityBadge = (p) => {
     if (!p) {
@@ -152,7 +164,7 @@ export const MyTickets = () => {
           <Skeleton variant="rectangular" className="h-28 rounded-2xl" />
           <Skeleton variant="rectangular" className="h-28 rounded-2xl" />
         </div>
-      ) : myTickets.length === 0 ? (
+      ) : ownTickets.length === 0 ? (
         <div className="p-8 sm:p-12 text-center flex flex-col items-center justify-center rounded-2xl border border-dashed border-purple-200 dark:border-purple-900/50 bg-purple-50/30 dark:bg-purple-950/10 space-y-6 mt-4">
           <div className="w-16 h-16 rounded-2xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300 flex items-center justify-center shadow-sm border border-purple-200 dark:border-purple-800">
             <TicketIcon className="w-8 h-8" />

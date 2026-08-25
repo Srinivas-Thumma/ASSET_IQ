@@ -117,6 +117,11 @@ export const getTickets = async (organizationId, userOrFilters = {}, filtersOrUs
   if (assetId) baseQuery.assetId = assetId;
   if (isEscalated !== undefined) baseQuery.isEscalated = isEscalated === 'true' || isEscalated === true;
 
+  // Security Scoping: Employee users can strictly only query their own raised tickets
+  if (user && user.role === 'employee') {
+    baseQuery.raisedBy = user._id;
+  }
+
   // Search by title or description
   if (search && typeof search === 'string' && search.trim()) {
     baseQuery.$or = [

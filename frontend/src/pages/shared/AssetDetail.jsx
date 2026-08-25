@@ -301,7 +301,34 @@ export const AssetDetail = () => {
   };
 
   const warranty = getWarrantyCountdown();
-  const currentCustodian = asset.currentAssignment?.employeeName || (asset.status === 'assigned' ? 'Assigned' : 'In Stock');
+
+  const activeAssignment = asset.assignments?.find((a) => !a.returnedAt) || asset.assignments?.[0];
+  let custodianName = null;
+
+  if (activeAssignment?.employeeId) {
+    if (typeof activeAssignment.employeeId === 'object') {
+      const fn = activeAssignment.employeeId.firstName || '';
+      const ln = activeAssignment.employeeId.lastName || '';
+      const full = `${fn} ${ln}`.trim();
+      custodianName = full || activeAssignment.employeeId.email;
+    } else if (typeof activeAssignment.employeeId === 'string') {
+      custodianName = activeAssignment.employeeName || activeAssignment.employeeId;
+    }
+  }
+
+  if (!custodianName && activeAssignment?.employeeName) {
+    custodianName = activeAssignment.employeeName;
+  }
+
+  if (!custodianName && asset.currentAssignment?.employeeName) {
+    custodianName = asset.currentAssignment.employeeName;
+  }
+
+  const assignedToLabel = custodianName
+    ? custodianName
+    : asset.status === 'assigned'
+    ? 'Assigned Employee'
+    : 'Unassigned (In Stock)';
 
   const lifespanMonths = asset.expectedLifespanMonths || asset.categoryId?.expectedLifespanMonths || 36;
   const retirementDate = asset.expectedRetirementDate
@@ -345,9 +372,9 @@ export const AssetDetail = () => {
                   {asset.status}
                 </Badge>
                 <HealthScoreBadge score={getAssetHealthScore(asset)} size="sm" />
-                {asset.currentAssignment?.employeeName && (
+                {custodianName && (
                   <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                    Custodian: {asset.currentAssignment.employeeName}
+                    Custodian: {custodianName}
                   </span>
                 )}
               </div>
@@ -520,9 +547,7 @@ export const AssetDetail = () => {
               <span className="text-[#64748B]">Assigned To:</span>
               <span className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                <span>
-                  {asset.currentAssignment?.employeeName || (asset.status === 'assigned' ? 'Assigned Employee' : 'Unassigned (In Stock)')}
-                </span>
+                <span>{assignedToLabel}</span>
               </span>
             </div>
             <div className="pt-3 mt-2 border-t border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center space-y-2 bg-slate-50/70 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
