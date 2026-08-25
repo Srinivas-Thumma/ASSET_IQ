@@ -166,7 +166,7 @@ export const MyTickets = () => {
       ) : (
         <div className="space-y-3">
           {filteredTickets.map((ticket) => {
-            const ticketCode = ticket.ticketNumber || `TKT-${ticket._id?.substring(0, 4).toUpperCase()}`;
+            const ticketCode = ticket.ticketNumber || ticket.ticketCode || (ticket._id ? `TKT-${ticket._id.slice(-6).toUpperCase()}` : 'TKT');
             const relatedAssetName = ticket.assetId?.name || (typeof ticket.assetId === 'string' ? 'Assigned Hardware' : null);
 
             return (

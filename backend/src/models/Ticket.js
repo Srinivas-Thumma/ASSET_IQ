@@ -2,6 +2,16 @@ import mongoose from "mongoose";
 
 const ticketSchema = new mongoose.Schema(
   {
+    ticketNumber: {
+      type: String,
+      trim: true,
+      index: true
+    },
+    ticketCode: {
+      type: String,
+      trim: true,
+      index: true
+    },
     type: {
       type: String,
       enum: ["repair", "request", "return", "support", "admin_support"],

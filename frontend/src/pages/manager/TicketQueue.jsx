@@ -236,7 +236,7 @@ export const TicketQueue = () => {
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-mono-code text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                      {tkt.ticketNumber || `TKT-${tkt._id?.substring(0, 4).toUpperCase()}`}
+                      {tkt.ticketNumber || tkt.ticketCode || (tkt._id ? `TKT-${tkt._id.slice(-6).toUpperCase()}` : 'TKT')}
                     </span>
                     <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
                       <Clock className="w-3 h-3" />
@@ -300,7 +300,7 @@ export const TicketQueue = () => {
                       </tr>
                     ) : (
                       openTickets.map((tkt) => {
-                        const tktCode = tkt.ticketNumber || `TKT-${tkt._id?.substring(0, 4).toUpperCase()}`;
+                        const tktCode = tkt.ticketNumber || tkt.ticketCode || (tkt._id ? `TKT-${tkt._id.slice(-6).toUpperCase()}` : 'TKT');
                         return (
                           <tr
                             key={tkt._id}
@@ -404,7 +404,7 @@ export const TicketQueue = () => {
                               </div>
 
                               <div className="flex items-center gap-2 text-[10px] text-slate-400">
-                                <span className="font-mono">{tkt.ticketNumber || `TKT-${tkt._id?.substring(0, 4).toUpperCase()}`}</span>
+                                <span className="font-mono-code">{tkt.ticketNumber || tkt.ticketCode || (tkt._id ? `TKT-${tkt._id.slice(-6).toUpperCase()}` : 'TKT')}</span>
                                 <span>•</span>
                                 <span className="uppercase font-semibold text-purple-600 dark:text-purple-400">{tkt.priority || 'P3'}</span>
                               </div>
@@ -479,8 +479,8 @@ export const TicketQueue = () => {
                             <span className="font-bold text-slate-900 dark:text-white block">
                               {tkt.title}
                             </span>
-                            <span className="text-[10px] font-mono text-slate-400">
-                              {tkt.ticketNumber || `TKT-${tkt._id?.substring(0, 4)}`}
+                            <span className="text-[10px] font-mono-code text-slate-400">
+                              {tkt.ticketNumber || tkt.ticketCode || (tkt._id ? `TKT-${tkt._id.slice(-6).toUpperCase()}` : 'TKT')}
                             </span>
                           </td>
                           <td className="px-3 py-2.5 uppercase font-bold text-rose-600">

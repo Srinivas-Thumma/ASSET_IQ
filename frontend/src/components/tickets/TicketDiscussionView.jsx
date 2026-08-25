@@ -162,7 +162,7 @@ export const TicketDiscussionView = () => {
   const internalMessages = allMessages.filter((m) => m.isInternal);
   const displayedMessages = activeTab === 'public' ? publicMessages : internalMessages;
 
-  const ticketCode = ticket.ticketNumber || `TKT-${ticket._id?.substring(0, 4).toUpperCase()}`;
+  const ticketCode = ticket.ticketNumber || ticket.ticketCode || (ticket._id ? `TKT-${ticket._id.slice(-6).toUpperCase()}` : 'TKT');
 
   // Priority color config
   const priorityConfig = {

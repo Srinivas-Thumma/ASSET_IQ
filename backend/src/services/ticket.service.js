@@ -29,7 +29,7 @@ export const createTicket = async (data, user) => {
 
   const priority = data.type === 'admin_support' ? (data.priority || 'p3') : data.priority;
 
-  const ticket = await Ticket.create({
+  const ticket = new Ticket({
     ...data,
     priority,
     raisedBy: user._id,
@@ -37,6 +37,11 @@ export const createTicket = async (data, user) => {
     organizationId: user.organizationId,
     organizationName: org?.name || ''
   });
+
+  const generatedCode = data.ticketCode || data.ticketNumber || `TKT-${ticket._id.toString().slice(-6).toUpperCase()}`;
+  ticket.ticketCode = generatedCode;
+  ticket.ticketNumber = generatedCode;
+  await ticket.save();
 
   // Auto-route if issueType matches org settings
   if (org?.settings?.autoRouteCategories) {
