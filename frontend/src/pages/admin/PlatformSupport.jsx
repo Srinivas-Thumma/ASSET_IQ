@@ -34,12 +34,33 @@ export const PlatformSupport = () => {
   const { data: tickets = [], isLoading } = useQuery({
     queryKey: ['platform-support-requests'],
     queryFn: async () => {
-      try {
-        const res = await requestApi.getRequests();
-        return Array.isArray(res) ? res : res?.items || [];
-      } catch (err) {
-        return await ticketApi.getTickets({ type: 'admin_support' });
+      const [requestsRes, ticketsRes] = await Promise.allSettled([
+        requestApi.getRequests(),
+        ticketApi.getTickets({ type: 'admin_support' })
+      ]);
+
+      const requestsList = requestsRes.status === 'fulfilled'
+        ? (Array.isArray(requestsRes.value) ? requestsRes.value : requestsRes.value?.items || [])
+        : [];
+
+      const ticketsList = ticketsRes.status === 'fulfilled'
+        ? (Array.isArray(ticketsRes.value) ? ticketsRes.value : ticketsRes.value?.items || [])
+        : [];
+
+      const combined = [...requestsList];
+      const existingIds = new Set(requestsList.map((r) => String(r._id)));
+
+      for (const t of ticketsList) {
+        if (!existingIds.has(String(t._id))) {
+          combined.push({
+            ...t,
+            requestCode: t.ticketCode || t.ticketNumber || `TKT-${t._id.toString().slice(-6).toUpperCase()}`,
+            category: t.issueType || 'platform_support'
+          });
+        }
       }
+
+      return combined.sort((a, b) => new Date(b.createdAt || Date.now()) - new Date(a.createdAt || Date.now()));
     }
   });
 

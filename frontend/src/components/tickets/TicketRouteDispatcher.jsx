@@ -52,7 +52,7 @@ export const TicketRouteDispatcher = () => {
   }
 
   // If found as an AdministrativeRequest, render RequestDetail
-  if (!ticket && request) {
+  if (ticket?.isAdministrativeRequest || (!ticket && request)) {
     return <RequestDetail />;
   }
 

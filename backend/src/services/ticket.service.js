@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import Ticket from '../models/Ticket.js';
 import TicketMessage from '../models/TicketMessage.js';
+import AdministrativeRequest from '../models/AdministrativeRequest.js';
 import Asset from '../models/Asset.js';
 import Organization from '../models/Organization.js';
 import User from '../models/User.js';
@@ -177,13 +178,46 @@ export const getTicketById = async (ticketId, organizationId, user = null) => {
     ? { _id: ticketId }
     : { _id: ticketId, organizationId: (user?.organizationId || organizationId) };
 
-  const ticket = await Ticket.findOne(query)
+  let ticket = await Ticket.findOne(query)
     .populate('organizationId', 'name slug')
     .populate('assetId', 'name assetCode status')
     .populate({ path: 'raisedBy', select: 'email role employeeRef', populate: populateEmployee })
     .populate({ path: 'handler', select: 'email role employeeRef', populate: populateEmployee })
     .populate('categoryId', 'name')
     .lean();
+
+  if (!ticket) {
+    const reqQuery = (user && user.role === 'super_admin')
+      ? { _id: ticketId }
+      : { _id: ticketId, organizationId: (user?.organizationId || organizationId) };
+
+    const reqDoc = await AdministrativeRequest.findOne(reqQuery)
+      .populate('organizationId', 'name slug')
+      .populate({ path: 'raisedBy', select: 'email role employeeRef', populate: populateEmployee })
+      .populate({ path: 'assignedSuperAdmin', select: 'email role employeeRef', populate: populateEmployee })
+      .lean();
+
+    if (reqDoc) {
+      ticket = {
+        _id: reqDoc._id,
+        ticketCode: reqDoc.requestCode,
+        ticketNumber: reqDoc.requestCode,
+        title: reqDoc.title,
+        description: reqDoc.description,
+        type: 'admin_support',
+        issueType: reqDoc.category || 'platform_support',
+        priority: reqDoc.priority || 'p3',
+        status: reqDoc.status,
+        organizationId: reqDoc.organizationId,
+        raisedBy: reqDoc.raisedBy,
+        handler: reqDoc.assignedSuperAdmin,
+        createdAt: reqDoc.createdAt,
+        updatedAt: reqDoc.updatedAt,
+        payload: reqDoc.payload,
+        isAdministrativeRequest: true
+      };
+    }
+  }
 
   if (!ticket) throw new ApiError(404, 'Ticket not found');
 

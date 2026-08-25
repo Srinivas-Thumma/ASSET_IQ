@@ -31,6 +31,7 @@ import {
 } from 'recharts';
 import adminApi from '../../api/admin.api.js';
 import ticketApi from '../../api/ticket.api.js';
+import { requestApi } from '../../api/request.api.js';
 import KpiCard from '../../components/ui/KpiCard.jsx';
 import Card, { CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/Card.jsx';
 import Button from '../../components/ui/Button.jsx';
@@ -83,7 +84,31 @@ export const SuperAdminDashboard = () => {
 
   const { data: adminTickets = [] } = useQuery({
     queryKey: ['admin-support-tickets'],
-    queryFn: () => ticketApi.getTickets({ type: 'admin_support' })
+    queryFn: async () => {
+      const [requestsRes, ticketsRes] = await Promise.allSettled([
+        requestApi.getRequests(),
+        ticketApi.getTickets({ type: 'admin_support' })
+      ]);
+
+      const requestsList = requestsRes.status === 'fulfilled'
+        ? (Array.isArray(requestsRes.value) ? requestsRes.value : requestsRes.value?.items || [])
+        : [];
+
+      const ticketsList = ticketsRes.status === 'fulfilled'
+        ? (Array.isArray(ticketsRes.value) ? ticketsRes.value : ticketsRes.value?.items || [])
+        : [];
+
+      const combined = [...requestsList];
+      const existingIds = new Set(requestsList.map((r) => String(r._id)));
+
+      for (const t of ticketsList) {
+        if (!existingIds.has(String(t._id))) {
+          combined.push(t);
+        }
+      }
+
+      return combined;
+    }
   });
 
   // Calculate metrics

@@ -22,8 +22,10 @@ export const ContactPlatformSupportModal = ({ isOpen, onClose }) => {
     mutationFn: (ticketData) => ticketApi.createTicket(ticketData),
     onSuccess: (newTicket) => {
       toast.success('Platform support request submitted to AssetOwl SuperAdmin');
+      queryClient.invalidateQueries({ queryKey: ['platform-support-requests'] });
       queryClient.invalidateQueries({ queryKey: ['platform-support-tickets'] });
       queryClient.invalidateQueries({ queryKey: ['admin-support-tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['requests'] });
       onClose();
       resetForm();
       const ticketId = newTicket._id || newTicket.data?._id || newTicket.id;

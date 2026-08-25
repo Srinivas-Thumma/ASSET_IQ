@@ -31,12 +31,33 @@ export const AdminSupportQueue = () => {
   const { data: tickets = [], isLoading } = useQuery({
     queryKey: ['global-admin-requests'],
     queryFn: async () => {
-      try {
-        const res = await requestApi.getRequests();
-        return Array.isArray(res) ? res : res?.items || [];
-      } catch (err) {
-        return await ticketApi.getTickets({ type: 'admin_support' });
+      const [requestsRes, ticketsRes] = await Promise.allSettled([
+        requestApi.getRequests(),
+        ticketApi.getTickets({ type: 'admin_support' })
+      ]);
+
+      const requestsList = requestsRes.status === 'fulfilled'
+        ? (Array.isArray(requestsRes.value) ? requestsRes.value : requestsRes.value?.items || [])
+        : [];
+
+      const ticketsList = ticketsRes.status === 'fulfilled'
+        ? (Array.isArray(ticketsRes.value) ? ticketsRes.value : ticketsRes.value?.items || [])
+        : [];
+
+      const combined = [...requestsList];
+      const existingIds = new Set(requestsList.map((r) => String(r._id)));
+
+      for (const t of ticketsList) {
+        if (!existingIds.has(String(t._id))) {
+          combined.push({
+            ...t,
+            requestCode: t.ticketCode || t.ticketNumber || `TKT-${t._id.toString().slice(-6).toUpperCase()}`,
+            category: t.issueType || 'platform_support'
+          });
+        }
       }
+
+      return combined.sort((a, b) => new Date(b.createdAt || Date.now()) - new Date(a.createdAt || Date.now()));
     }
   });
 
@@ -65,7 +86,8 @@ export const AdminSupportQueue = () => {
       if (activeStatusTab === 'resolved' && t.status !== 'resolved' && t.status !== 'closed') return false;
 
       // 2. Category Filter
-      if (activeCategory !== 'all' && t.issueType !== activeCategory) return false;
+      const itemCat = t.category || t.issueType;
+      if (activeCategory !== 'all' && itemCat !== activeCategory) return false;
 
       // 3. Search Query
       const q = searchQuery.toLowerCase().trim();
@@ -185,7 +207,8 @@ export const AdminSupportQueue = () => {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filteredTickets.map((tkt) => {
-                  const caseCode = `SUP-${tkt._id.slice(-6).toUpperCase()}`;
+                  const caseCode = tkt.requestCode || tkt.ticketCode || tkt.ticketNumber || `SUP-${tkt._id.slice(-6).toUpperCase()}`;
+                  const cat = tkt.category || tkt.issueType;
 
                   return (
                     <tr
@@ -205,7 +228,7 @@ export const AdminSupportQueue = () => {
                       </td>
 
                       <td className="px-4 py-3.5 text-slate-600 dark:text-slate-400">
-                        {categoryLabels[tkt.issueType] || tkt.issueType || 'General'}
+                        {categoryLabels[cat] || cat || 'General'}
                       </td>
 
                       <td className="px-4 py-3.5 uppercase font-bold text-[10px]">
