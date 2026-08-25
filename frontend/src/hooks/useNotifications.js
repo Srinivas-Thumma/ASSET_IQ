@@ -9,7 +9,10 @@ export const useNotifications = () => {
     queryFn: async () => {
       try {
         const res = await notificationApi.getNotifications();
-        return res?.notifications || [];
+        if (Array.isArray(res)) return res;
+        if (Array.isArray(res?.notifications)) return res.notifications;
+        if (Array.isArray(res?.data)) return res.data;
+        return [];
       } catch {
         return [];
       }

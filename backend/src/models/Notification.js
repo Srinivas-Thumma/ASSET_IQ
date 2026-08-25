@@ -16,8 +16,11 @@ const notificationSchema = new mongoose.Schema(
     type: {
       type: String,
       enum: [
+        "ticket_created",
+        "ticket_escalated",
         "ticket_claimed",
         "ticket_resolved",
+        "request_created",
         "asset_assigned",
         "return_initiated",
         "inspection_completed",

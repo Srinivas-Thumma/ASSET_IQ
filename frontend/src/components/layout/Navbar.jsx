@@ -15,7 +15,9 @@ import {
   Shield,
   Building,
   ChevronDown,
-  Search
+  Search,
+  FileText,
+  AlertTriangle
 } from 'lucide-react';
 import Avatar from '../ui/Avatar.jsx';
 import Badge from '../ui/Badge.jsx';
@@ -109,8 +111,17 @@ export const Navbar = () => {
 
   const handleNotificationClick = (n) => {
     if (!n.read) markAsRead(n._id);
-    if (n.type?.includes('ticket') && n.relatedId) navigate(`/ticket/${n.relatedId}`);
-    else if (n.type?.includes('asset') && n.relatedId) navigate(`/assets/${n.relatedId}`);
+    if (n.type?.includes('ticket') && n.relatedId) {
+      navigate(`/ticket/${n.relatedId}`);
+    } else if (n.type?.includes('request') || n.relatedType === 'request') {
+      if (user?.role === 'super_admin') {
+        navigate('/admin/support');
+      } else {
+        navigate('/procurement');
+      }
+    } else if (n.type?.includes('asset') && n.relatedId) {
+      navigate(`/assets/${n.relatedId}`);
+    }
     setNotificationsOpen(false);
   };
 
@@ -285,10 +296,14 @@ export const Navbar = () => {
                       }`}
                     >
                       <div className="p-2 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-400 h-fit mt-0.5 border border-purple-200/60 dark:border-purple-800/60">
-                        {n.type?.includes('ticket') ? (
-                          <Ticket className="w-3.5 h-3.5" />
+                        {n.type === 'ticket_escalated' ? (
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                        ) : n.type?.includes('request') || n.relatedType === 'request' ? (
+                          <FileText className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                        ) : n.type?.includes('ticket') ? (
+                          <Ticket className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                         ) : (
-                          <HardDrive className="w-3.5 h-3.5" />
+                          <HardDrive className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                         )}
                       </div>
                       <div className="flex-1 space-y-1">

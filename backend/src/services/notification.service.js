@@ -174,10 +174,132 @@ export const markAllNotificationsAsRead = async (userId) => {
   return await Notification.updateMany({ userId }, { read: true });
 };
 
+/**
+ * Notify all active Asset Managers in an organization when a new ticket is raised.
+ */
+export const notifyAssetManagersOnTicketCreated = async (ticket, creatorUser, orgName = '') => {
+  try {
+    const managers = await User.find({
+      organizationId: ticket.organizationId,
+      role: 'asset_manager',
+      status: 'active',
+      _id: { $ne: creatorUser._id }
+    }).select('_id').lean();
+
+    const creatorName = creatorUser.firstName && creatorUser.lastName
+      ? `${creatorUser.firstName} ${creatorUser.lastName}`
+      : (creatorUser.name || creatorUser.email);
+
+    for (const mgr of managers) {
+      await createNotification({
+        userId: mgr._id,
+        organizationId: ticket.organizationId,
+        type: 'ticket_created',
+        title: 'New Ticket Raised',
+        message: `New ticket "${ticket.title}" (${ticket.priority ? ticket.priority.toUpperCase() : 'P3'}) was raised by ${creatorName}.`,
+        relatedId: ticket._id,
+        relatedType: 'ticket'
+      });
+    }
+  } catch (err) {
+    logger.error('Error notifying asset managers on ticket creation:', { error: err.message });
+  }
+};
+
+/**
+ * Notify all active Org Admins in an organization when a manager escalates a ticket.
+ */
+export const notifyOrgAdminsOnTicketEscalated = async (ticket, actorUser) => {
+  try {
+    const admins = await User.find({
+      organizationId: ticket.organizationId,
+      role: 'org_admin',
+      status: 'active',
+      _id: { $ne: actorUser._id }
+    }).select('_id').lean();
+
+    const actorName = actorUser.firstName && actorUser.lastName
+      ? `${actorUser.firstName} ${actorUser.lastName}`
+      : (actorUser.name || actorUser.email);
+
+    for (const admin of admins) {
+      await createNotification({
+        userId: admin._id,
+        organizationId: ticket.organizationId,
+        type: 'ticket_escalated',
+        title: 'Ticket Escalated to P1',
+        message: `Ticket "${ticket.title}" was escalated to P1 Critical by ${actorName}.`,
+        relatedId: ticket._id,
+        relatedType: 'ticket'
+      });
+    }
+  } catch (err) {
+    logger.error('Error notifying org admins on ticket escalation:', { error: err.message });
+  }
+};
+
+/**
+ * Notify all active SuperAdmins when a ticket is created.
+ */
+export const notifySuperAdminsOnTicketCreated = async (ticket, creatorUser, orgName = '') => {
+  try {
+    const superAdmins = await User.find({
+      role: 'super_admin',
+      status: 'active'
+    }).select('_id').lean();
+
+    for (const sa of superAdmins) {
+      await createNotification({
+        userId: sa._id,
+        organizationId: ticket.organizationId,
+        type: 'ticket_created',
+        title: 'New Ticket Raised',
+        message: `Tenant "${orgName || 'Organization'}" raised ticket "${ticket.title}".`,
+        relatedId: ticket._id,
+        relatedType: 'ticket'
+      });
+    }
+  } catch (err) {
+    logger.error('Error notifying super admins on ticket creation:', { error: err.message });
+  }
+};
+
+/**
+ * Notify all active SuperAdmins when an administrative request is created.
+ */
+export const notifySuperAdminsOnRequestCreated = async (request, creatorUser, orgName = '') => {
+  try {
+    const superAdmins = await User.find({
+      role: 'super_admin',
+      status: 'active'
+    }).select('_id').lean();
+
+    const catLabel = request.category ? request.category.replace('_', ' ') : 'Admin';
+
+    for (const sa of superAdmins) {
+      await createNotification({
+        userId: sa._id,
+        organizationId: request.organizationId,
+        type: 'request_created',
+        title: `New ${catLabel} Request`,
+        message: `Organization "${orgName || 'Tenant'}" submitted request "${request.title}".`,
+        relatedId: request._id,
+        relatedType: 'request'
+      });
+    }
+  } catch (err) {
+    logger.error('Error notifying super admins on request creation:', { error: err.message });
+  }
+};
+
 export default {
   createNotification,
   runWarrantyNotificationCheck,
   getNotificationsForUser,
   markNotificationAsRead,
-  markAllNotificationsAsRead
+  markAllNotificationsAsRead,
+  notifyAssetManagersOnTicketCreated,
+  notifyOrgAdminsOnTicketEscalated,
+  notifySuperAdminsOnTicketCreated,
+  notifySuperAdminsOnRequestCreated
 };

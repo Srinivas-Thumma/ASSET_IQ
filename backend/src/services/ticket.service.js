@@ -7,7 +7,12 @@ import User from '../models/User.js';
 import Employee from '../models/Employee.js';
 import ApiError from '../utils/ApiError.js';
 import { logAudit } from './audit.service.js';
-import { createNotification } from './notification.service.js';
+import {
+  createNotification,
+  notifyAssetManagersOnTicketCreated,
+  notifyOrgAdminsOnTicketEscalated,
+  notifySuperAdminsOnTicketCreated
+} from './notification.service.js';
 import { emitToTicket } from '../config/socket.js';
 
 const populateEmployee = {
@@ -53,7 +58,13 @@ export const createTicket = async (data, user) => {
     organizationId: user.organizationId
   });
 
-  // Notify SuperAdmin if this is a Platform Support Request
+  // Notify Asset Managers in the organization when someone raises a ticket
+  await notifyAssetManagersOnTicketCreated(ticket, user, org?.name);
+
+  // Notify SuperAdmins when someone raises a ticket
+  await notifySuperAdminsOnTicketCreated(ticket, user, org?.name);
+
+  // Additional specialized notification if this is a Platform Support Request
   if (ticket.type === 'admin_support') {
     const superAdmins = await User.find({ role: 'super_admin', status: 'active' }).select('_id').lean();
     for (const sa of superAdmins) {
@@ -395,6 +406,9 @@ export const escalateTicket = async (ticketId, user) => {
     targetId: ticket._id,
     organizationId: ticket.organizationId
   });
+
+  // Notify Org Admins when a manager escalates a ticket
+  await notifyOrgAdminsOnTicketEscalated(ticket, user);
 
   return ticket;
 };

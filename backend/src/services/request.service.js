@@ -6,7 +6,7 @@ import ApiError from '../utils/ApiError.js';
 import { validateRequestPayload } from '../validators/request.validator.js';
 import { createRequestConversation } from './conversation.service.js';
 import { logAudit } from './audit.service.js';
-import { createNotification } from './notification.service.js';
+import { createNotification, notifySuperAdminsOnRequestCreated } from './notification.service.js';
 
 /**
  * Creates a new AdministrativeRequest after strict RBAC checks & category payload validation.
@@ -73,21 +73,8 @@ export const createRequest = async (data, user) => {
     organizationId: user.organizationId
   });
 
-  // Notify SuperAdmins for platform governance categories
-  if (['platform_support', 'plan_upgrade', 'quota_increase', 'billing'].includes(data.category)) {
-    const superAdmins = await User.find({ role: 'super_admin', status: 'active' }).select('_id').lean();
-    for (const sa of superAdmins) {
-      await createNotification({
-        userId: sa._id,
-        organizationId: user.organizationId,
-        type: 'admin_support_created',
-        title: `New ${data.category.replace('_', ' ')} Request`,
-        message: `Organization "${org.name}" submitted request "${request.title}".`,
-        relatedId: request._id,
-        relatedType: 'request'
-      });
-    }
-  }
+  // Notify SuperAdmins when someone raises an administrative request
+  await notifySuperAdminsOnRequestCreated(request, user, org.name);
 
   return request;
 };
