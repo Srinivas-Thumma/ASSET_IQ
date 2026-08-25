@@ -36,6 +36,7 @@ import Breadcrumbs from '../ui/Breadcrumbs.jsx';
 import { useAuthStore } from '../../stores/auth.store.js';
 import { useTickets } from '../../hooks/useTickets.js';
 import { useTicketSocket } from '../../hooks/useTicketSocket.js';
+import { useNotifications } from '../../hooks/useNotifications.js';
 import { formatDate, formatRelative } from '../../utils/formatters.js';
 import { toast } from 'sonner';
 
@@ -82,6 +83,18 @@ export const TicketDiscussionView = () => {
 
   // Live WebSocket synchronization
   useTicketSocket(id);
+  const { notifications, markAsRead } = useNotifications();
+
+  // Clear unread notifications for ONLY this specific ticket when opened
+  useEffect(() => {
+    if (!ticket?._id || !notifications?.length) return;
+    const matchingNotifs = notifications.filter(
+      (n) => !n.read && String(n.relatedId) === String(ticket._id)
+    );
+    if (matchingNotifs.length > 0) {
+      matchingNotifs.forEach((n) => markAsRead(n._id));
+    }
+  }, [ticket?._id, notifications]);
 
   // Chat state
   const [activeTab, setActiveTab] = useState('public'); // 'public' | 'internal'

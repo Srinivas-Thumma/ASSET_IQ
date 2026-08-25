@@ -24,6 +24,7 @@ import Modal from '../../components/ui/Modal.jsx';
 import Skeleton from '../../components/ui/Skeleton.jsx';
 import { useAuthStore } from '../../stores/auth.store.js';
 import { useTickets } from '../../hooks/useTickets.js';
+import { useNotifications } from '../../hooks/useNotifications.js';
 import { formatDate, formatRelative } from '../../utils/formatters.js';
 
 export const getSLAInfo = (ticket) => {
@@ -90,6 +91,7 @@ export const TicketQueue = () => {
   }
 
   const { tickets, isLoading, claimTicket } = useTickets();
+  const { notifications } = useNotifications();
 
   const [selectedTicketForClaim, setSelectedTicketForClaim] = useState(null);
   const [selectedPriority, setSelectedPriority] = useState('p2');
@@ -308,9 +310,17 @@ export const TicketQueue = () => {
                             onClick={() => navigate(`/tickets/${tkt._id}`)}
                           >
                             <td className="px-4 py-3">
-                              <span className="font-bold text-slate-900 dark:text-white block truncate max-w-xs">
-                                {tkt.title}
-                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-slate-900 dark:text-white block truncate max-w-xs">
+                                  {tkt.title}
+                                </span>
+                                {notifications.some((n) => !n.read && String(n.relatedId) === String(tkt._id)) && (
+                                  <span className="relative flex h-2 w-2 shrink-0" title="Unread Activity">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-600"></span>
+                                  </span>
+                                )}
+                              </div>
                               <span className="font-mono-code text-[10px] text-purple-600 dark:text-purple-400">
                                 {tktCode} • {tkt.raisedBy?.email || 'Employee'}
                               </span>
@@ -394,9 +404,17 @@ export const TicketQueue = () => {
                           >
                             <td className="px-3 py-3 space-y-1">
                               <div className="flex items-center justify-between gap-2">
-                                <span className="font-bold text-slate-900 dark:text-white truncate max-w-[170px] block">
-                                  {tkt.title}
-                                </span>
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className="font-bold text-slate-900 dark:text-white truncate max-w-[170px] block">
+                                    {tkt.title}
+                                  </span>
+                                  {notifications.some((n) => !n.read && String(n.relatedId) === String(tkt._id)) && (
+                                    <span className="relative flex h-2 w-2 shrink-0" title="Unread Activity">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                                      <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-600"></span>
+                                    </span>
+                                  )}
+                                </div>
                                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 flex items-center gap-1 ${slaColors[sla.color]}`}>
                                   <Clock className="w-2.5 h-2.5" />
                                   <span>{sla.timeString}</span>

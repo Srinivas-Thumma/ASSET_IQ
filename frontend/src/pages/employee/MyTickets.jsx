@@ -20,12 +20,14 @@ import EmptyState from '../../components/ui/EmptyState.jsx';
 import RaiseTicketModal from '../../components/modals/RaiseTicketModal.jsx';
 import { useTickets } from '../../hooks/useTickets.js';
 import { useAssets } from '../../hooks/useAssets.js';
+import { useNotifications } from '../../hooks/useNotifications.js';
 import { formatDate, formatRelative } from '../../utils/formatters.js';
 
 export const MyTickets = () => {
   const navigate = useNavigate();
   const { myTickets, isMyTicketsLoading } = useTickets();
   const { myAssets } = useAssets();
+  const { notifications } = useNotifications();
 
   const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'open' | 'in_progress' | 'resolved' | 'closed'
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -168,6 +170,9 @@ export const MyTickets = () => {
           {filteredTickets.map((ticket) => {
             const ticketCode = ticket.ticketNumber || ticket.ticketCode || (ticket._id ? `TKT-${ticket._id.slice(-6).toUpperCase()}` : 'TKT');
             const relatedAssetName = ticket.assetId?.name || (typeof ticket.assetId === 'string' ? 'Assigned Hardware' : null);
+            const hasUnread = notifications.some(
+              (n) => !n.read && String(n.relatedId) === String(ticket._id)
+            );
 
             return (
               <div
@@ -213,9 +218,15 @@ export const MyTickets = () => {
                     </span>
                   </div>
 
-                  <div className="text-purple-600 dark:text-purple-400 font-bold flex items-center gap-1 group-hover:translate-x-1 transition-transform text-xs">
+                  <div className="text-purple-600 dark:text-purple-400 font-bold flex items-center gap-1.5 group-hover:translate-x-1 transition-transform text-xs">
                     <MessageSquare className="w-3.5 h-3.5" />
                     <span>Open Discussion</span>
+                    {hasUnread && (
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-600"></span>
+                      </span>
+                    )}
                     <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
                   </div>
                 </div>
