@@ -1,13 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { assignmentApi } from '../api/assignment.api.js';
+import { useAuthStore } from '../stores/auth.store.js';
 
 export const useAssignments = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const isManagerOrAdmin = user?.role === 'asset_manager' || user?.role === 'org_admin' || user?.role === 'super_admin';
 
   const inspectionsQuery = useQuery({
     queryKey: ['assignments', 'inspections'],
-    queryFn: () => assignmentApi.getPendingInspections()
+    queryFn: () => assignmentApi.getPendingInspections(),
+    enabled: Boolean(isManagerOrAdmin)
   });
 
   const initiateReturnMutation = useMutation({

@@ -66,8 +66,10 @@ export const createTicket = async (data, user) => {
   // Notify Asset Managers in the organization when someone raises a ticket
   await notifyAssetManagersOnTicketCreated(ticket, user, org?.name);
 
-  // Notify SuperAdmins when someone raises a ticket
-  await notifySuperAdminsOnTicketCreated(ticket, user, org?.name);
+  // Notify SuperAdmins only when a platform/admin support request is raised
+  if (ticket.type === 'admin_support') {
+    await notifySuperAdminsOnTicketCreated(ticket, user, org?.name);
+  }
 
   // Additional specialized notification if this is a Platform Support Request
   if (ticket.type === 'admin_support') {

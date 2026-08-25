@@ -41,8 +41,8 @@ const runNotificationTests = async () => {
     console.log(` - Org Admin: ${orgAdmin.email}`);
     console.log(` - Super Admin: ${superAdmin.email}\n`);
 
-    // TEST 1: Employee raises a ticket -> Asset Manager & Super Admin should receive notifications
-    console.log('Test 1: Raising a new ticket by Employee...');
+    // TEST 1: Employee raises a ticket -> Asset Manager should receive notification (SuperAdmin excluded)
+    console.log('Test 1: Raising a new ticket by Employee for Asset Manager...');
     const ticket = await createTicket(
       {
         title: 'Test Notification Keyboard Issue',
@@ -72,10 +72,10 @@ const runNotificationTests = async () => {
       console.error('  ❌ Asset Manager failed to receive ticket_created notification');
     }
 
-    if (saNotifTicket) {
-      console.log('  ✅ Super Admin received ticket_created notification:', saNotifTicket.message);
+    if (!saNotifTicket) {
+      console.log('  ✅ Super Admin correctly excluded from operational ticket notification');
     } else {
-      console.error('  ❌ Super Admin failed to receive ticket_created notification');
+      console.error('  ❌ Super Admin incorrectly received operational ticket_created notification');
     }
 
     // TEST 2: Asset Manager escalates ticket -> Org Admin should receive ticket_escalated notification
@@ -130,7 +130,7 @@ const runNotificationTests = async () => {
     await Notification.deleteMany({ relatedId: { $in: [ticket._id, request._id] } });
     console.log('\n🧹 Cleaned up temporary test records from MongoDB.');
 
-    if (mgrNotif && saNotifTicket && adminEscNotif && saNotifReq) {
+    if (mgrNotif && !saNotifTicket && adminEscNotif && saNotifReq) {
       console.log('\n======================================================');
       console.log('🎉 ALL NOTIFICATION TESTS PASSED SUCCESSFULLY 100%');
       console.log('======================================================');

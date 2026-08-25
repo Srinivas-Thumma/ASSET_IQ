@@ -56,19 +56,11 @@ export const ReturnAssetModal = ({
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      if (assignmentId) {
+      const targetId = assignmentId || asset?._id;
+      if (targetId) {
         await initiateReturn({
-          assignmentId,
+          assignmentId: targetId,
           reason: `${reason} - ${notes || 'Standard return request'}`
-        });
-      } else {
-        await createTicket({
-          assetId: asset?._id,
-          type: 'return',
-          issueType: 'hardware',
-          title: `Return Request: ${asset?.name || 'Equipment'}`,
-          description: `Return Reason: ${reason}\nChecklist Summary:\n- Powers on: ${checklist.powersOn ? 'Yes' : 'No'}\n- No Physical Damage: ${checklist.noDamage ? 'Yes' : 'No'}\n- Accessories Included: ${checklist.accessoriesIncluded ? 'Yes' : 'No'}\n- Data Backed Up: ${checklist.dataBackedUp ? 'Yes' : 'No'}\nAdditional Notes: ${notes || 'None'}`,
-          priority: 'p3'
         });
       }
 

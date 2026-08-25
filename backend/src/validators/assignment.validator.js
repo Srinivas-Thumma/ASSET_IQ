@@ -11,10 +11,10 @@ export const inspectSchema = z.object({
 });
 
 export const returnSchema = z.object({
-  reason: z.enum(['offboarding', 'upgrade', 'defective']).optional(),
-  returnReason: z.enum(['offboarding', 'upgrade', 'defective']).optional()
-}).refine((data) => data.reason || data.returnReason, {
-  message: 'Return reason must be offboarding, upgrade, or defective'
+  reason: z.string().optional(),
+  returnReason: z.string().optional()
+}).refine((data) => Boolean(data.reason || data.returnReason), {
+  message: 'Return reason is required'
 });
 
 // Aliases for compatibility
