@@ -510,10 +510,37 @@ export const AssetDetail = () => {
                 {asset.warrantyType || 'Manufacturer'}
               </span>
             </div>
-            <div className="flex justify-between py-1">
+            <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
               <span className="text-[#64748B]">Vendor / Supplier:</span>
               <span className="font-semibold text-slate-900 dark:text-white">
                 {asset.vendorId?.name || 'OEM Supplier'}
+              </span>
+            </div>
+            <div className="flex justify-between py-1 items-center border-b border-slate-100 dark:border-slate-800">
+              <span className="text-[#64748B]">Assigned To:</span>
+              <span className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                <span>
+                  {asset.currentAssignment?.employeeName || (asset.status === 'assigned' ? 'Assigned Employee' : 'Unassigned (In Stock)')}
+                </span>
+              </span>
+            </div>
+            <div className="pt-3 mt-2 border-t border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center space-y-2 bg-slate-50/70 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Asset QR Code
+              </span>
+              <div className="p-2 bg-white rounded-lg shadow-2xs border border-slate-200 flex items-center justify-center">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(
+                    `ASSETIQ:${asset.assetCode}:${asset._id}`
+                  )}`}
+                  alt={`QR Code for ${asset.assetCode}`}
+                  className="w-28 h-28 object-contain"
+                  loading="lazy"
+                />
+              </div>
+              <span className="font-mono-code text-[10px] font-bold text-purple-700 dark:text-purple-300">
+                {asset.assetCode}
               </span>
             </div>
           </div>
